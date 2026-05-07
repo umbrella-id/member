@@ -7,7 +7,9 @@
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(function(OneSignal) {
         OneSignal.init({
-          appId: "545e6d0a-cbe8-4b6e-82a6-7e43c5af32ac",
+        appId: "545e6d0a-cbe8-4b6e-82a6-7e43c5af32ac",
+        serviceWorkerParam: { scope: "/umbrella-notif/" }, // Tambahkan ini
+        serviceWorkerPath: "OneSignalSDKWorker.js",       // Dan ini
         });
       });
     </script>

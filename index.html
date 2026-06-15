@@ -1,23 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>UMBRELLA ADMIN</title>
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script>
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "ab21be69-3b5b-47cb-b58c-261d41c92588",
-          serviceWorkerPath: "OneSignalSDKWorker.js",
-          serviceWorkerParam: { scope: "/umbrella-notif/" }
-        });
-      });
-    </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Kas Guild System</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body style="background:#000; color:#fff; text-align:center; padding-top:100px; font-family:sans-serif;">
-    <h2>UMBRELLA ADMIN HUB</h2>
-    <button onclick="OneSignal.Notifications.requestPermission()" style="padding:20px; border-radius:10px; background:#8e44ad; color:#fff; border:none; cursor:pointer; font-weight:bold;">
-        AKTIFKAN NOTIFIKASI SEKARANG
-    </button>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Laporan Kas Guild</h1>
+    <p>💰 Kas mingguan | ✅ Centang = sudah bayar | Deposit = sisa saldo setelah lunas</p>
+  </div>
+  
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label>📅 Tahun</label>
+      <select id="tahunFilter"></select>
+    </div>
+    <div class="filter-group">
+      <label>📆 Bulan</label>
+      <select id="bulanFilter"></select>
+    </div>
+    <div class="filter-group" id="ignFilterGroup" style="display: none;">
+      <label>🔍 Cari IGN</label>
+      <input type="text" id="ignFilter" placeholder="Ketik nama...">
+    </div>
+  </div>
+  
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="monthly">📊 Tabel Bulanan</button>
+    <button class="tab-btn" data-tab="history">📋 History Kas</button>
+  </div>
+  
+  <div id="monthlyTab" class="card">
+    <div id="monthlyContent"><div class="loading">Memuat data...</div></div>
+  </div>
+  
+  <div id="historyTab" class="card" style="display: none;">
+    <div id="historyContent"><div class="loading">Memuat data...</div></div>
+  </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>

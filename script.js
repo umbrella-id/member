@@ -4,74 +4,6 @@ const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzzYiVd0aqzdzmohQn
 
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
-let currentTab = 'monthly';
-
-// ==================== INITIALIZATION ====================
-function initYearSelect() {
-  const select = document.getElementById('tahunFilter');
-  const year = new Date().getFullYear();
-  select.innerHTML = '';
-  for (let y = year - 2; y <= year + 1; y++) {
-    const option = document.createElement('option');
-    option.value = y;
-    option.textContent = y;
-    if (y === currentYear) option.selected = true;
-    select.appendChild(option);
-  }
-}
-
-function initMonthSelect() {
-  const select = document.getElementById('bulanFilter');
-  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  select.innerHTML = '';
-  months.forEach((m, i) => {
-    const option = document.createElement('option');
-    option.value = i + 1;
-    option.textContent = m;
-    if (i + 1 === currentMonth) option.selected = true;
-    select.appendChild(option);
-  });
-}
-
-// ==================== EVENT HANDLERS ====================
-function changeYear() {
-  currentYear = parseInt(document.getElementById('tahunFilter').value);
-  if (currentTab === 'monthly') loadMonthly();
-  else loadHistory();
-}
-
-function changeMonth() {
-  currentMonth = parseInt(document.getElementById('bulanFilter').value);
-  if (currentTab === 'monthly') loadMonthly();
-  else loadHistory();
-}
-
-function filterHistory() {
-  loadHistory();
-}
-
-// ==================== TAB SWITCHING ====================
-function switchTab(tab) {
-  currentTab = tab;
-  const monthlyTab = document.getElementById('monthlyTab');
-  const historyTab = document.getElementById('historyTab');
-  const ignFilterGroup = document.getElementById('ignFilterGroup');
-  
-  if (tab === 'monthly') {
-    monthlyTab.style.display = 'block';
-    historyTab.style.display = 'none';
-    ignFilterGroup.style.display = 'none';
-    loadMonthly();
-  } else {
-    monthlyTab.style.display = 'none';
-    historyTab.style.display = 'block';
-    ignFilterGroup.style.display = 'flex';
-    loadHistory();
-  }
-  
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
-}
 
 // ==================== API CALLS ====================
 async function callApi(action, params = {}) {
@@ -94,11 +26,11 @@ async function callApi(action, params = {}) {
 }
 
 // ==================== LOAD MONTHLY TABLE ====================
-async function loadMonthly() {
+async function loadMonthly(tahun = currentYear, bulan = currentMonth) {
   const container = document.getElementById('monthlyContent');
-  container.innerHTML = '<div class="loading">Memuat data tabel bulanan...</div>';
+  container.innerHTML = '<div class="loading">Memuat data...</div>';
   
-  const result = await callApi('getMonthlyTable', { tahun: currentYear, bulan: currentMonth });
+  const result = await callApi('getMonthlyTable', { tahun: tahun, bulan: bulan });
   
   if (!result.success) {
     container.innerHTML = `<div class="error">❌ Error: ${result.error}</div>`;
@@ -110,82 +42,98 @@ async function loadMonthly() {
     return;
   }
   
-  let html = '<div class="scroll-hint">← Geser ke kanan untuk lihat semua kolom →</div>';
-  html += '</table><thead>';
-  html += '<tr><th class="member-col">IGN</th>';
+  let html = '<div class="scroll-hint">← Geser ke kanan untuk lihat semua →</div>';
+  
+  // ===== HEADER 2 TINGKAT =====
+  html += '<table>';
+  
+  // Baris 1: Info Kas + Bulan + Tarif
+  html += `<thead><tr>`;
+  html += `<th colspan="1" style="text-align:left; font-weight:bold; color:#22c55e;">Saldo Kas: ${formatRupiah(result.saldoKas)}</th>`;
+  html += `<th colspan="${result.totalMinggu}" style="text-align:center; font-size:1.1rem; color:#f1f5f9; cursor:pointer;" onclick="toggleBulanDropdown(event, ${tahun}, ${bulan})">${result.bulanNama}</th>`;
+  html += `<th colspan="2" style="text-align:right; font-weight:bold; color:#94a3b8;">${formatRupiah(result.tarif)} / Minggu</th>`;
+  html += `</tr>`;
+  
+  // Baris 2: Label Kolom
+  html += `<tr>`;
+  html += `<th style="text-align:left;">IGN</th>`;
   for (const sabtu of result.sabtuList) {
     html += `<th>${sabtu}</th>`;
   }
-  html += '<th>Deposit</th><th>Estimasi</th>';
-  html += '</thead><tbody>';
+  html += `<th>Deposit</th>`;
+  html += `<th>Estimasi</th>`;
+  html += `</tr></thead>`;
+  
+  // ===== BODY TABEL =====
+  html += `<tbody>`;
   
   for (const row of result.data) {
     html += '<tr>';
     html += `<td class="member-col">${escapeHtml(row.ign)}</td>`;
     for (const c of row.centang) {
-      html += `<td>${c ? '<span class="centang">✅</span>' : '<span class="kosong">-</span>'}</td>`;
+      html += `<td>${c ? '<span class="centang">✅</span>' : ''}</td>`;
     }
     html += `<td class="deposit">${formatRupiah(row.deposit)}</td>`;
     html += `<td class="estimasi">${row.estimasi}</td>`;
     html += '</tr>';
   }
   
-  html += '</tbody>赶';
+  html += '</tbody></table>';
+  
+  // ===== DROPDOWN BULAN =====
+  html += `<div id="bulanDropdown" class="bulan-dropdown" style="display:none;"></div>`;
+  
   container.innerHTML = html;
 }
 
-// ==================== LOAD HISTORY ====================
-async function loadHistory() {
-  const container = document.getElementById('historyContent');
-  container.innerHTML = '<div class="loading">Memuat history kas...</div>';
-  
-  const ignFilter = document.getElementById('ignFilter').value;
-  const result = await callApi('getHistoryKas', { 
-    tahun: currentYear, 
-    bulan: currentMonth, 
-    ignFilter: ignFilter 
-  });
-  
-  if (!result.success) {
-    container.innerHTML = `<div class="error">❌ Error: ${result.error}</div>`;
+// ==================== DROPDOWN BULAN ====================
+function toggleBulanDropdown(event, tahun, bulan) {
+  const dropdown = document.getElementById('bulanDropdown');
+  if (dropdown.style.display === 'block') {
+    dropdown.style.display = 'none';
     return;
   }
   
-  if (result.data.length === 0) {
-    container.innerHTML = '<div class="loading">📭 Tidak ada transaksi</div>';
-    return;
+  // Posisi dropdown di bawah nama bulan
+  const rect = event.target.getBoundingClientRect();
+  dropdown.style.position = 'fixed';
+  dropdown.style.top = (rect.bottom + 4) + 'px';
+  dropdown.style.left = (rect.left) + 'px';
+  dropdown.style.display = 'block';
+  dropdown.innerHTML = '';
+  
+  // Generate 12 bulan terakhir
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const bulanNama = getNamaBulan(d.getMonth() + 1);
+    const tahunNama = d.getFullYear();
+    const isActive = (d.getMonth() + 1 === bulan && d.getFullYear() === tahun);
+    
+    const item = document.createElement('div');
+    item.className = 'item' + (isActive ? ' active' : '');
+    item.textContent = `${bulanNama} ${tahunNama}`;
+    item.onclick = (function(t, b) {
+      return function() {
+        currentYear = t;
+        currentMonth = b;
+        loadMonthly(t, b);
+        dropdown.style.display = 'none';
+      };
+    })(d.getFullYear(), d.getMonth() + 1);
+    dropdown.appendChild(item);
   }
-  
-  let html = ' <thead>';
-  html += '<tr><th>Tanggal</th><th>IGN</th><th>Nominal</th><th>Keterangan</th><th>Bendahara</th></tr>';
-  html += '</thead><tbody>';
-  
-  for (const tx of result.data) {
-    const nominalClass = tx.spina > 0 ? 'positive' : 'negative';
-    const nominal = tx.spina > 0 ? `+${formatRupiah(tx.spina)}` : formatRupiah(tx.spina);
-    html += '<tr>';
-    html += `<td>${formatDate(tx.date)}</td>`;
-    html += `<td>${escapeHtml(tx.ign)}</td>`;
-    html += `<td class="${nominalClass}">${nominal}</td>`;
-    html += `<td>${escapeHtml(tx.notes || '-')}</td>`;
-    html += `<td>${escapeHtml(tx.adm || '-')}</td>`;
-    html += '</tr>';
-  }
-  
-  html += '</tbody><tr>';
-  container.innerHTML = html;
 }
 
-// ==================== HELPER FUNCTIONS ====================
+function getNamaBulan(bulan) {
+  const nama = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  return nama[bulan - 1];
+}
+
+// ==================== HELPERS ====================
 function formatRupiah(angka) {
   if (angka === 0 || !angka) return 'Rp0';
   return 'Rp' + angka.toLocaleString('id-ID');
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '-';
-  const d = new Date(dateString);
-  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 }
 
 function escapeHtml(str) {
@@ -198,17 +146,15 @@ function escapeHtml(str) {
   });
 }
 
-// ==================== EVENT LISTENERS ====================
+// ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', function() {
-  initYearSelect();
-  initMonthSelect();
   loadMonthly();
   
-  document.getElementById('tahunFilter').addEventListener('change', changeYear);
-  document.getElementById('bulanFilter').addEventListener('change', changeMonth);
-  document.getElementById('ignFilter').addEventListener('keyup', filterHistory);
-  
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  // Close dropdown on click outside
+  document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('bulanDropdown');
+    if (dropdown && !dropdown.contains(e.target) && !e.target.closest('.bulan')) {
+      dropdown.style.display = 'none';
+    }
   });
 });

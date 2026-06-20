@@ -1,225 +1,591 @@
 // ==================== KONFIGURASI ====================
-const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzzYiVd0aqzdzmohQnBfvZJRdnwyeSNb-75H_pO5Fxh2-S3aU111rdW8w9aQ0306MNR/exec';
+const BASE_URL = 'https://script.google.com/macros/s/AKfycbzTP1-9KuQ2iz4ffTfhujqkSIQqQxXWMXY-BHljCVU_Zzm0Ept8j4AJUCBHqB-ZSZk/exec';
+const CACHE_KEY = 'kas_data';
+const CACHE_EXPIRY = 5 * 60 * 1000;
+const START_YEAR = 2025;
+const START_MONTH = 6;
 
-let currentYear = new Date().getFullYear();
-let currentMonth = new Date().getMonth() + 1;
-let currentTab = 'monthly';
+// ==================== STATE ====================
+let currentTahun = new Date().getFullYear();
+let currentBulan = new Date().getMonth() + 1;
+let availableMonths = [];
+let allHistoryData = [];
+let historyLoaded = false;
 
-// ==================== API CALLS ====================
-async function callApi(action, params = {}) {
-  const url = new URL(API_BASE_URL);
-  url.searchParams.append('action', action);
-  Object.keys(params).forEach(key => {
-    if (params[key] !== undefined && params[key] !== '') {
-      url.searchParams.append(key, params[key]);
+// ==================== DOM REFS ====================
+const $ = (id) => document.getElementById(id);
+const monthLabel = $('monthLabel');
+const prevBtn = $('prevMonth');
+const nextBtn = $('nextMonth');
+const searchInput = $('searchInput');
+const tableHead = $('tableHead');
+const tableBody = $('tableBody');
+const tableContainer = $('tableContainer');
+const skeletonContainer = $('skeletonContainer');
+const skeletonBody = $('skeletonBody');
+const historySearch = $('historySearch');
+const historyBody = $('historyBody');
+const historyContainer = $('historyContainer');
+const loadingHistory = $('loadingHistory');
+
+// ==================== CACHE ====================
+function getCache(key) {
+    try {
+        const raw = localStorage.getItem(CACHE_KEY + '_' + key);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (Date.now() - data.timestamp > CACHE_EXPIRY) {
+            localStorage.removeItem(CACHE_KEY + '_' + key);
+            return null;
+        }
+        return data.value;
+    } catch (e) { return null; }
+}
+
+function setCache(key, value) {
+    try {
+        localStorage.setItem(CACHE_KEY + '_' + key, JSON.stringify({
+            timestamp: Date.now(),
+            value: value
+        }));
+    } catch (e) { /* ignore */ }
+}
+
+// ==================== GENERATE MONTHS ====================
+function generateMonthList() {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const months = [];
+    let year = START_YEAR;
+    let month = START_MONTH;
+
+    while (year < currentYear || (year === currentYear && month <= currentMonth)) {
+        months.push({
+            tahun: year,
+            bulan: month,
+            label: getNamaBulan(month) + ' ' + year
+        });
+        month++;
+        if (month > 12) { month = 1;
+            year++; }
     }
-  });
-  
-  try {
-    const response = await fetch(url.toString());
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('API Error:', error);
-    return { success: false, error: error.message };
-  }
+    return months;
 }
 
-// ==================== TAB SWITCHING ====================
-function switchTab(tab) {
-  currentTab = tab;
-  const monthlyTab = document.getElementById('monthlyTab');
-  const historyTab = document.getElementById('historyTab');
-  
-  if (tab === 'monthly') {
-    monthlyTab.style.display = 'block';
-    historyTab.style.display = 'none';
-    loadMonthly();
-  } else {
-    monthlyTab.style.display = 'none';
-    historyTab.style.display = 'block';
-    loadHistory();
-  }
-  
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
-}
-
-// ==================== LOAD MONTHLY TABLE ====================
-async function loadMonthly(tahun = currentYear, bulan = currentMonth) {
-  const container = document.getElementById('monthlyContent');
-  container.innerHTML = '<div class="loading">Memuat data...</div>';
-  
-  const result = await callApi('getMonthlyTable', { tahun: tahun, bulan: bulan });
-  
-  if (!result.success) {
-    container.innerHTML = `<div class="error">❌ Error: ${result.error}</div>`;
-    return;
-  }
-  
-  if (result.data.length === 0) {
-    container.innerHTML = '<div class="loading">✨ Tidak ada data untuk bulan ini</div>';
-    return;
-  }
-  
-  let html = '<div class="scroll-hint">← Geser ke kanan untuk lihat semua →</div>';
-  html += '<table>';
-  
-  // === HEADER 2 TINGKAT ===
-  html += `<thead><tr>`;
-  html += `<th colspan="1" style="text-align:left; font-weight:bold; color:#22c55e;">Saldo Kas: ${formatRupiah(result.saldoKas)}</th>`;
-  html += `<th colspan="${result.totalMinggu}" style="text-align:center; font-size:1.1rem; color:#f1f5f9; cursor:pointer;" onclick="toggleBulanDropdown(event, ${tahun}, ${bulan})">${result.bulanNama}</th>`;
-  html += `<th colspan="2" style="text-align:right; font-weight:bold; color:#94a3b8;">${formatRupiah(result.tarif)} / Minggu</th>`;
-  html += `</tr>`;
-  
-  html += `<tr>`;
-  html += `<th style="text-align:left;">IGN</th>`;
-  for (const sabtu of result.sabtuList) {
-    html += `<th>${sabtu}</th>`;
-  }
-  html += `<th>Deposit</th>`;
-  html += `<th>Estimasi</th>`;
-  html += `</tr></thead>`;
-  
-  // === BODY ===
-  html += `<tbody>`;
-  for (const row of result.data) {
-    html += '<tr>';
-    html += `<td class="member-col">${escapeHtml(row.ign)}</td>`;
-    for (const c of row.centang) {
-      html += `<td>${c ? '<span class="centang">✅</span>' : ''}</td>`;
+// ==================== SKELETON ====================
+function showSkeleton(count) {
+    count = count || 30;
+    let html = '';
+    for (let i = 0; i < count; i++) {
+        html += '<tr class="skeleton-row">';
+        html += '<td></td><td></td>';
+        html += '<td class="centang-cell"></td>';
+        html += '<td class="centang-cell"></td>';
+        html += '<td class="centang-cell"></td>';
+        html += '<td class="centang-cell"></td>';
+        html += '<td class="deposit"></td>';
+        html += '<td class="estimasi"></td>';
+        html += '</tr>';
     }
-    html += `<td class="deposit">${formatRupiah(row.deposit)}</td>`;
-    html += `<td class="estimasi">${row.estimasi}</td>`;
-    html += '</tr>';
-  }
-  html += '</tbody></table>';
-  
-  container.innerHTML = html;
+    skeletonBody.innerHTML = html;
+    skeletonContainer.style.display = 'block';
+    tableContainer.style.display = 'none';
 }
 
-// ==================== LOAD HISTORY ====================
+function hideSkeleton() {
+    skeletonContainer.style.display = 'none';
+}
+
+// ==================== FORMAT SPINA ====================
+function formatSpina(angka) {
+    if (angka === undefined || angka === null) return '0 S';
+    return Math.round(angka).toLocaleString('id-ID') + ' S';
+}
+
+function formatSpinaRaw(angka) {
+    if (angka === undefined || angka === null) return '0';
+    return Math.round(angka).toLocaleString('id-ID');
+}
+
+// ==================== MENU (FLOATING) ====================
+const menuToggle = $('menuToggle');
+const menuOverlay = $('menuOverlay');
+const menuPanel = $('menuPanel');
+const menuClose = $('menuClose');
+
+function toggleMenu(open) {
+    menuOverlay.classList.toggle('open', open);
+    menuPanel.classList.toggle('open', open);
+}
+menuToggle.addEventListener('click', () => toggleMenu(true));
+menuClose.addEventListener('click', () => toggleMenu(false));
+menuOverlay.addEventListener('click', () => toggleMenu(false));
+
+// ==================== FLOATING MENU NAVIGATION ====================
+document.querySelectorAll('.menu-panel ul li').forEach(item => {
+    item.addEventListener('click', function() {
+        document.querySelectorAll('.menu-panel ul li').forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+        const page = this.dataset.page;
+        toggleMenu(false);
+
+        document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+        document.querySelector('.header-kas').style.display = 'flex';
+
+        if (page === 'segera') {
+            document.querySelector('.header-kas').style.display = 'none';
+            document.querySelector('.tab-selector').style.display = 'none';
+            document.querySelector('.dual-panel').style.display = 'none';
+            $('pageSegera').classList.add('active');
+        } else {
+            document.querySelector('.header-kas').style.display = 'flex';
+            document.querySelector('.dual-panel').style.display = 'grid';
+            // Cek layar lebar/kecil
+            if (window.innerWidth < 900) {
+                document.querySelector('.tab-selector').style.display = 'flex';
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.tab-btn[data-tab="kas"]').classList.add('active');
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                $('panelKas').classList.add('active');
+            } else {
+                document.querySelector('.tab-selector').style.display = 'none';
+                document.querySelectorAll('.panel').forEach(p => p.classList.add('active'));
+                // 🔥 PASTIKAN HISTORY DI-LOAD DI MODE PC
+                if (!historyLoaded && allHistoryData.length === 0) {
+                    loadHistory();
+                } else if (allHistoryData.length > 0) {
+                    renderHistory(allHistoryData);
+                    loadingHistory.style.display = 'none';
+                    historyContainer.style.display = 'block';
+                }
+            }
+        }
+    });
+});
+
+// ==================== TAB SELECTOR (layar kecil) ====================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const target = this.dataset.tab;
+
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        if (target === 'kas') {
+            $('panelKas').classList.add('active');
+        } else if (target === 'history') {
+            $('panelHistory').classList.add('active');
+            if (allHistoryData.length > 0) {
+                renderHistory(allHistoryData);
+                loadingHistory.style.display = 'none';
+                historyContainer.style.display = 'block';
+            } else {
+                loadHistory();
+            }
+        }
+    });
+});
+
+// ==================== WINDOW RESIZE ====================
+window.addEventListener('resize', function() {
+    const isWide = window.innerWidth >= 900;
+    const tabSelector = document.querySelector('.tab-selector');
+    const panels = document.querySelectorAll('.panel');
+
+    if (isWide) {
+        tabSelector.style.display = 'none';
+        panels.forEach(p => p.classList.add('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.tab-btn[data-tab="kas"]').classList.add('active');
+        // 🔥 PASTIKAN HISTORY DI-LOAD SAAT RESIZE KE LAYAR LEBAR
+        if (!historyLoaded && allHistoryData.length === 0) {
+            loadHistory();
+        } else if (allHistoryData.length > 0) {
+            renderHistory(allHistoryData);
+            loadingHistory.style.display = 'none';
+            historyContainer.style.display = 'block';
+        }
+    } else {
+        tabSelector.style.display = 'flex';
+        const activeTab = document.querySelector('.tab-btn.active');
+        if (activeTab) {
+            const target = activeTab.dataset.tab;
+            panels.forEach(p => p.classList.remove('active'));
+            if (target === 'kas') {
+                $('panelKas').classList.add('active');
+            } else if (target === 'history') {
+                $('panelHistory').classList.add('active');
+                if (!historyLoaded && allHistoryData.length === 0) {
+                    loadHistory();
+                } else if (allHistoryData.length > 0) {
+                    renderHistory(allHistoryData);
+                    loadingHistory.style.display = 'none';
+                    historyContainer.style.display = 'block';
+                }
+            }
+        }
+    }
+});
+
+// ==================== RENDER TABLE ====================
+function renderTable(data) {
+    const totalMinggu = data.totalMinggu || 0;
+    const sabtuList = data.sabtuList || [];
+
+    let headerHtml = '<tr><th>#</th><th>IGN</th>';
+    for (let i = 0; i < totalMinggu; i++) {
+        const tgl = sabtuList[i] || '';
+        headerHtml += '<th class="centang-header">' + tgl + '</th>';
+    }
+    headerHtml += '<th class="deposit-header">Deposit</th><th class="estimasi-header">Estimasi</th></tr>';
+    tableHead.innerHTML = headerHtml;
+
+    let bodyHtml = '';
+    let index = 1;
+    const members = data.data || [];
+
+    for (const member of members) {
+        const centang = member.centang || [];
+        const deposit = member.deposit || 0;
+        const tarif = data.tarif || 0;
+
+        let estimasi = '-';
+        if (deposit > 0 && tarif > 0) {
+            const mingguTambahan = Math.floor(deposit / tarif);
+            if (mingguTambahan > 0 && sabtuList.length > 0) {
+                const lastSabtu = new Date(currentTahun, currentBulan - 1, sabtuList[sabtuList.length - 1]);
+                lastSabtu.setDate(lastSabtu.getDate() + (mingguTambahan * 7));
+                estimasi = formatTanggalEstimasi(lastSabtu);
+            } else {
+                estimasi = 's/d akhir bulan';
+            }
+        }
+
+        bodyHtml += '<tr>';
+        bodyHtml += '<td style="color:#5a6488;">' + (index++) + '</td>';
+        bodyHtml += '<td class="ign">' + (member.ign || '-') + '</td>';
+
+        for (let i = 0; i < totalMinggu; i++) {
+            const status = centang[i];
+            let icon = '';
+            let cls = 'empty';
+            if (status === true) {
+                icon = '<i class="fas fa-check-circle"></i>';
+                cls = 'paid';
+            } else if (status === false) {
+                icon = '<i class="fas fa-times-circle"></i>';
+                cls = 'unpaid';
+            } else {
+                icon = '—';
+                cls = 'empty';
+            }
+            bodyHtml += '<td class="centang-cell"><span class="' + cls + '">' + icon + '</span></td>';
+        }
+
+        bodyHtml += '<td class="deposit">' + formatSpina(deposit) + '</td>';
+        bodyHtml += '<td class="estimasi">' + estimasi + '</td>';
+        bodyHtml += '</tr>';
+    }
+
+    tableBody.innerHTML = bodyHtml;
+    tableContainer.style.display = 'block';
+    hideSkeleton();
+    applySearch();
+}
+
+// ==================== UPDATE HEADER ====================
+function updateHeader(data) {
+    if (data.saldoKas !== undefined) {
+        $('totalKasHeader').textContent = formatSpina(data.saldoKas);
+    }
+    if (data.tarif) {
+        $('tarifHeader').textContent = Math.round(data.tarif).toLocaleString('id-ID');
+    }
+    if (data.bendahara && data.bendahara.length > 0) {
+        let html = '';
+        for (const b of data.bendahara) {
+            html += '<span>' + b.nama + ': <span class="saldo">' + formatSpina(b.saldo) + '</span></span>';
+        }
+        $('bendaharaList').innerHTML = html;
+    } else {
+        $('bendaharaList').innerHTML = '<span>-</span>';
+    }
+}
+
+// ==================== HISTORY ====================
 async function loadHistory() {
-  const container = document.getElementById('historyContent');
-  container.innerHTML = '<div class="loading">Memuat history...</div>';
-  
-  const ignFilter = document.getElementById('ignFilter').value;
-  const result = await callApi('getHistoryKas', {
-    tahun: currentYear,
-    bulan: currentMonth,
-    ignFilter: ignFilter
-  });
-  
-  if (!result.success) {
-    container.innerHTML = `<div class="error">❌ Error: ${result.error}</div>`;
-    return;
-  }
-  
-  if (result.data.length === 0) {
-    container.innerHTML = '<div class="loading">📭 Tidak ada transaksi</div>';
-    return;
-  }
-  
-  let html = '<div class="scroll-hint">📋 ' + result.data.length + ' transaksi ditemukan</div>';
-  html += '<table><thead><tr>';
-  html += '<th>Tanggal</th><th>IGN</th><th>Nominal</th><th>Keterangan</th><th>Bendahara</th>';
-  html += '</tr></thead><tbody>';
-  
-  for (const tx of result.data) {
-    const nominalClass = tx.spina > 0 ? 'positive' : 'negative';
-    const nominal = tx.spina > 0 ? `+${formatRupiah(tx.spina)}` : formatRupiah(tx.spina);
-    html += '<tr>';
-    html += `<td>${formatDate(tx.date)}</td>`;
-    html += `<td>${escapeHtml(tx.ign)}</td>`;
-    html += `<td class="${nominalClass}">${nominal}</td>`;
-    html += `<td>${escapeHtml(tx.notes || '-')}</td>`;
-    html += `<td>${escapeHtml(tx.adm || '-')}</td>`;
-    html += '</tr>';
-  }
-  
-  html += '</tbody></table>';
-  container.innerHTML = html;
+    loadingHistory.style.display = 'block';
+    historyContainer.style.display = 'none';
+    try {
+        const res = await fetch(BASE_URL + '?action=getHistory&limit=100');
+        const data = await res.json();
+        loadingHistory.style.display = 'none';
+        if (data.success && data.data) {
+            allHistoryData = data.data;
+            historyLoaded = true;
+            renderHistory(allHistoryData);
+        } else {
+            historyBody.innerHTML =
+                '<tr><td colspan="5" style="text-align:center;padding:20px;color:#5a6488;">📭 Belum ada transaksi</td></tr>';
+            historyContainer.style.display = 'block';
+        }
+    } catch (e) {
+        loadingHistory.style.display = 'none';
+        historyBody.innerHTML =
+            '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f44336;">❌ Gagal memuat history</td></tr>';
+        historyContainer.style.display = 'block';
+    }
 }
 
-// ==================== DROPDOWN BULAN ====================
-function toggleBulanDropdown(event, tahun, bulan) {
-  let dropdown = document.getElementById('bulanDropdown');
-  if (!dropdown) {
-    const div = document.createElement('div');
-    div.id = 'bulanDropdown';
-    div.className = 'bulan-dropdown';
-    document.body.appendChild(div);
-    dropdown = div;
-  }
-  
-  if (dropdown.style.display === 'block') {
-    dropdown.style.display = 'none';
-    return;
-  }
-  
-  const rect = event.target.getBoundingClientRect();
-  dropdown.style.top = (rect.bottom + 4) + 'px';
-  dropdown.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
-  dropdown.style.display = 'block';
-  dropdown.innerHTML = '';
-  
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const bulanNama = getNamaBulan(d.getMonth() + 1);
-    const tahunNama = d.getFullYear();
-    const isActive = (d.getMonth() + 1 === bulan && d.getFullYear() === tahun);
-    
-    const item = document.createElement('div');
-    item.className = 'item' + (isActive ? ' active' : '');
-    item.textContent = `${bulanNama} ${tahunNama}`;
-    item.onclick = (function(t, b) {
-      return function() {
-        currentYear = t;
-        currentMonth = b;
-        loadMonthly(t, b);
-        dropdown.style.display = 'none';
-      };
-    })(d.getFullYear(), d.getMonth() + 1);
-    dropdown.appendChild(item);
-  }
+// ==================== RENDER HISTORY ====================
+function renderHistory(data) {
+    let html = '';
+    for (const item of data) {
+        const date = new Date(item.date);
+        // Format: dd-mmm-yy (contoh: 15-Jun-26)
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const dateStr = String(date.getDate()).padStart(2, '0') + '-' + 
+                        months[date.getMonth()] + '-' + 
+                        String(date.getFullYear()).slice(-2);
+        
+        const spina = item.spina || 0;
+        const spinaClass = spina >= 0 ? 'spina-positive' : 'spina-negative';
+        const spinaFormatted = (spina >= 0 ? '+' : '') + formatSpinaRaw(spina) + ' S';
+        
+        html += '<tr>';
+        html += '<td class="col-date">' + dateStr + '</td>';
+        html += '<td class="col-ign">' + (item.ign || '-') + '</td>';
+        html += '<td class="col-amount ' + spinaClass + '">' + spinaFormatted + '</td>';
+        html += '<td class="col-notes">' + (item.notes || '-') + '</td>';
+        html += '<td class="col-admin">' + (item.adm || '-') + '</td>';
+        html += '</tr>';
+    }
+    historyBody.innerHTML = html ||
+        '<tr><td colspan="5" style="text-align:center;padding:20px;color:#5a6488;">📭 Tidak ada data</td></tr>';
+    historyContainer.style.display = 'block';
+    loadingHistory.style.display = 'none';
 }
 
-// ==================== HELPERS ====================
+// ==================== PRELOAD BULAN SEBELUMNYA ====================
+function preloadPrevMonth() {
+    let idx = -1;
+    for (let i = 0; i < availableMonths.length; i++) {
+        if (availableMonths[i].tahun === currentTahun && availableMonths[i].bulan === currentBulan) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx > 0) {
+        const prev = availableMonths[idx - 1];
+        const key = prev.tahun + '-' + prev.bulan;
+        if (!getCache(key)) {
+            const url = BASE_URL + '?action=getMonthlyTable&tahun=' + prev.tahun + '&bulan=' + prev.bulan;
+            fetch(url).then(r => r.json()).then(data => {
+                if (data.success) {
+                    setCache(key, data);
+                    console.log('✅ Preload:', prev.label);
+                }
+            }).catch(() => {});
+        }
+    }
+}
+
+// ==================== SEARCH ====================
+function applySearch() {
+    const keyword = searchInput.value.toLowerCase().trim();
+    const rows = tableBody.querySelectorAll('tr');
+    let visible = 0;
+    for (const row of rows) {
+        const ignCell = row.querySelector('td.ign');
+        if (ignCell) {
+            const ign = ignCell.textContent.toLowerCase();
+            const match = !keyword || ign.includes(keyword);
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        }
+    }
+}
+searchInput.addEventListener('input', applySearch);
+
+historySearch.addEventListener('input', function() {
+    const keyword = this.value.toLowerCase().trim();
+    const filtered = allHistoryData.filter(item => {
+        const ign = (item.ign || '').toLowerCase();
+        return !keyword || ign.includes(keyword);
+    });
+    renderHistory(filtered);
+});
+
+// ==================== NAVIGASI ====================
+function updateNavButtons() {
+    let idx = -1;
+    for (let i = 0; i < availableMonths.length; i++) {
+        if (availableMonths[i].tahun === currentTahun && availableMonths[i].bulan === currentBulan) {
+            idx = i;
+            break;
+        }
+    }
+    prevBtn.disabled = (idx <= 0);
+    nextBtn.disabled = (idx >= availableMonths.length - 1 || idx === -1);
+}
+
+prevBtn.addEventListener('click', function() {
+    let idx = -1;
+    for (let i = 0; i < availableMonths.length; i++) {
+        if (availableMonths[i].tahun === currentTahun && availableMonths[i].bulan === currentBulan) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx > 0) {
+        currentTahun = availableMonths[idx - 1].tahun;
+        currentBulan = availableMonths[idx - 1].bulan;
+        monthLabel.textContent = availableMonths[idx - 1].label;
+        loadData();
+        setTimeout(preloadPrevMonth, 300);
+    }
+});
+
+nextBtn.addEventListener('click', function() {
+    let idx = -1;
+    for (let i = 0; i < availableMonths.length; i++) {
+        if (availableMonths[i].tahun === currentTahun && availableMonths[i].bulan === currentBulan) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx < availableMonths.length - 1 && idx !== -1) {
+        currentTahun = availableMonths[idx + 1].tahun;
+        currentBulan = availableMonths[idx + 1].bulan;
+        monthLabel.textContent = availableMonths[idx + 1].label;
+        loadData();
+    }
+});
+
+// ==================== LOAD DATA ====================
+async function loadData() {
+    const key = currentTahun + '-' + currentBulan;
+    showSkeleton(30);
+
+    const cached = getCache(key);
+    if (cached) {
+        console.log('✅ Load dari cache');
+        renderTable(cached);
+        updateHeader(cached);
+        monthLabel.textContent = cached.bulanNama || (currentBulan + '/' + currentTahun);
+        updateNavButtons();
+        setTimeout(preloadPrevMonth, 300);
+        // 🔥 PRELOAD HISTORY DI BACKGROUND
+        if (!historyLoaded) {
+            setTimeout(() => {
+                fetch(BASE_URL + '?action=getHistory&limit=100')
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success && data.data) {
+                            allHistoryData = data.data;
+                            historyLoaded = true;
+                            // Jika panel history aktif, render
+                            if (document.querySelector('.panel-history.active') ||
+                                window.innerWidth >= 900) {
+                                renderHistory(allHistoryData);
+                                loadingHistory.style.display = 'none';
+                                historyContainer.style.display = 'block';
+                            }
+                        }
+                    }).catch(() => {});
+            }, 400);
+        }
+        return;
+    }
+
+    try {
+        const url = BASE_URL + '?action=getMonthlyTable&tahun=' + currentTahun + '&bulan=' + currentBulan;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        if (data.success) {
+            setCache(key, data);
+            renderTable(data);
+            updateHeader(data);
+            monthLabel.textContent = data.bulanNama || (currentBulan + '/' + currentTahun);
+            updateNavButtons();
+            setTimeout(preloadPrevMonth, 300);
+            // 🔥 PRELOAD HISTORY DI BACKGROUND
+            if (!historyLoaded) {
+                setTimeout(() => {
+                    fetch(BASE_URL + '?action=getHistory&limit=100')
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success && data.data) {
+                                allHistoryData = data.data;
+                                historyLoaded = true;
+                                if (document.querySelector('.panel-history.active') ||
+                                    window.innerWidth >= 900) {
+                                    renderHistory(allHistoryData);
+                                    loadingHistory.style.display = 'none';
+                                    historyContainer.style.display = 'block';
+                                }
+                            }
+                        }).catch(() => {});
+                }, 400);
+            }
+        } else {
+            showError(data.error || 'Gagal memuat data');
+        }
+    } catch (e) {
+        console.error('Error load data:', e);
+        showError('Error: ' + e.message);
+    }
+}
+
+// ==================== UTILITY ====================
+function formatTanggalEstimasi(date) {
+    const bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return date.getDate() + ' ' + bulan[date.getMonth()] + ' ' + date.getFullYear();
+}
+
+function showError(msg) {
+    tableContainer.style.display = 'block';
+    tableHead.innerHTML = '';
+    tableBody.innerHTML =
+        '<tr><td colspan="10" style="text-align:center;padding:30px;color:#f44336;">❌ ' + msg + '</td></tr>';
+    hideSkeleton();
+}
+
 function getNamaBulan(bulan) {
-  const nama = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  return nama[bulan - 1];
-}
-
-function formatRupiah(angka) {
-  if (angka === 0 || !angka) return 'Rp0';
-  return 'Rp' + angka.toLocaleString('id-ID');
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '-';
-  const d = new Date(dateString);
-  return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/[&<>]/g, function(m) {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    return m;
-  });
+    const nama = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober',
+        'November', 'Desember'
+    ];
+    return nama[bulan - 1] || bulan;
 }
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', function() {
-  loadMonthly();
-  
-  document.addEventListener('click', function(e) {
-    const dropdown = document.getElementById('bulanDropdown');
-    if (dropdown && !dropdown.contains(e.target) && !e.target.closest('.bulan')) {
-      dropdown.style.display = 'none';
+    availableMonths = generateMonthList();
+    const last = availableMonths[availableMonths.length - 1];
+    currentTahun = last.tahun;
+    currentBulan = last.bulan;
+    monthLabel.textContent = last.label;
+    updateNavButtons();
+
+    // Set initial view
+    const isWide = window.innerWidth >= 900;
+    if (isWide) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.add('active'));
+    } else {
+        document.querySelector('.tab-selector').style.display = 'flex';
+        document.querySelector('.tab-btn[data-tab="kas"]').classList.add('active');
+        $('panelKas').classList.add('active');
     }
-  });
+
+    showSkeleton(30);
+    loadData();
 });
+
+window.forceRefresh = function() {
+    const key = currentTahun + '-' + currentBulan;
+    localStorage.removeItem(CACHE_KEY + '_' + key);
+    loadData();
+};

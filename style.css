@@ -9,6 +9,7 @@
     --border-line: #2a2f45;
     --text-main: #e0e0e0;
     --text-muted: #8892b0;
+    --text-dim: #4a5270;
     --color-positive: #4ade80;
     --color-negative: #f87171;
 }
@@ -151,8 +152,8 @@ body {
     color: var(--text-muted);
 }
 .header-kas .saldo-utama .tarif span {
-    color: var(--text-main);
-    font-weight: 500;
+    color: #ffffff ;
+    font-size: 15px;
 }
 .header-kas .bendahara-list {
     display: flex;
@@ -346,6 +347,20 @@ th {
 }
 
 /* ===== KOLOM TABEL ===== */
+/* Semua header tabel tetap abu-abu */
+th {
+    color: var(--text-muted) !important;
+}
+
+/* Kecuali untuk header # dan IGN tetap abu-abu */
+th.col-no,
+th.col-ign,
+th.centang-header,
+th.deposit-header,
+th.estimasi-header {
+    color: var(--text-muted) !important;
+}
+
 th.col-no,
 td.col-no {
     width: 36px;
@@ -358,58 +373,73 @@ td.col-no {
     font-size: 11px;
 }
 
-th.col-ign,
-td.col-ign {
-    text-align: left;
-}
-td.col-ign {
-    font-weight: 600;
-    color: #fff;
+/* IGN - Tebal seperti history */
+#tableBody td.ign {
+    font-weight: 700 !important;
+    color: #ffffff !important;
     white-space: nowrap;
 }
 
-th.col-centang,
-td.col-centang {
-    text-align: center;
-    width: 8%;
-    min-width: 28px;
-    max-width: 48px;
-    padding: 6px 2px;
-    font-size: 8px;
-}
-td.col-centang {
-    font-size: 12px;
-    padding: 4px 2px;
-}
-td.col-centang .paid {
-    color: var(--color-positive);
-}
-td.col-centang .unpaid {
-    color: var(--color-negative);
-}
-td.col-centang .empty {
-    color: var(--text-muted);
-    opacity: 0.3;
+/* Centang - Hijau untuk paid */
+#tableBody td .paid {
+    color: hsl(142, 69%, 58%) !important;
+    font-size: 12px !important;
 }
 
-th.col-deposit,
-td.col-deposit {
-    text-align: right;
-}
-td.col-deposit {
-    font-weight: 600;
-    font-size: 11px;
-    color: var(--color-positive);
+/* Centang - Merah untuk unpaid */
+#tableBody td .unpaid {
+    color: #f87171 !important;
+    font-size: 12px !important;
 }
 
-th.col-estimasi,
-td.col-estimasi {
-    text-align: right;
+/* Centang - Redup untuk empty (strip) */
+#tableBody td .empty {
+    color: #4a5270 !important;
+    opacity: 0.3 !important;
 }
-td.col-estimasi {
-    font-weight: 600;
-    font-size: 11px;
-    color: var(--text-muted);
+
+/* Cell centang */
+#tableBody td.centang-cell {
+    text-align: center !important;
+    padding: 4px 2px !important;
+}
+
+/* Deposit - Rata kanan, hijau, tebal */
+#tableBody td.deposit {
+    text-align: right !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    color: #4ade80 !important;
+    padding-right: 12px !important;
+}
+
+/* Estimasi - Rata kiri, redup seperti admin di history */
+#tableBody td.estimasi {
+    text-align: left !important;
+    font-weight: 400 !important;
+    font-size: 11px !important;
+    color: #4a5270 !important;
+    padding-left: 12px !important;
+}
+
+/* Header deposit dan estimasi tetap abu-abu */
+th.deposit-header {
+    text-align: right !important;
+    color: var(--text-muted) !important;
+    padding-right: 12px !important;
+}
+
+th.estimasi-header {
+    text-align: left !important;
+    color: var(--text-muted) !important;
+    padding-left: 12px !important;
+}
+
+/* Header centang */
+th.centang-header {
+    text-align: center !important;
+    font-size: 9px !important;
+    color: var(--text-muted) !important;
 }
 
 td {
@@ -435,7 +465,7 @@ tr:hover {
     min-width: 36px;
     max-width: 36px;
 }
-.skeleton-row td.col-centang {
+.skeleton-row td.centang-cell {
     width: 8%;
     min-width: 28px;
     max-width: 48px;
@@ -662,15 +692,28 @@ tr:hover {
     td {
         padding: 3px 4px;
     }
-    th.col-centang,
-    td.col-centang {
+    th.centang-header,
+    td.centang-cell {
         min-width: 24px;
         max-width: 36px;
-        font-size: 10px;
     }
-    td.col-deposit,
-    td.col-estimasi {
-        font-size: 10px;
+    #tableBody td .paid,
+    #tableBody td .unpaid {
+        font-size: 12px !important;
+    }
+    #tableBody td.deposit {
+        font-size: 11px !important;
+        padding-right: 6px !important;
+    }
+    #tableBody td.estimasi {
+        font-size: 10px !important;
+        padding-left: 6px !important;
+    }
+    th.deposit-header {
+        padding-right: 6px !important;
+    }
+    th.estimasi-header {
+        padding-left: 6px !important;
     }
     .history-wrap table {
         min-width: 420px;
@@ -710,6 +753,9 @@ tr:hover {
     .header-kas .saldo-utama .tarif {
         font-size: 12px;
     }
+    .header-kas .saldo-utama .tarif span {
+        font-size: 13px;
+    }
     .header-kas .bendahara-list {
         font-size: 10px;
         gap: 2px 8px;
@@ -736,16 +782,29 @@ tr:hover {
         min-width: 28px;
         max-width: 28px;
     }
-    th.col-centang,
-    td.col-centang {
+    th.centang-header,
+    td.centang-cell {
         min-width: 20px;
         max-width: 30px;
-        font-size: 9px;
         padding: 2px 1px;
     }
-    td.col-deposit,
-    td.col-estimasi {
-        font-size: 9px;
+    #tableBody td .paid,
+    #tableBody td .unpaid {
+        font-size: 10px !important;
+    }
+    #tableBody td.deposit {
+        font-size: 10px !important;
+        padding-right: 4px !important;
+    }
+    #tableBody td.estimasi {
+        font-size: 9px !important;
+        padding-left: 4px !important;
+    }
+    th.deposit-header {
+        padding-right: 4px !important;
+    }
+    th.estimasi-header {
+        padding-left: 4px !important;
     }
     .history-wrap table {
         min-width: 340px;

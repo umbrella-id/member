@@ -2,7 +2,7 @@
 const BASE_URL = 'https://script.google.com/macros/s/AKfycbzTP1-9KuQ2iz4ffTfhujqkSIQqQxXWMXY-BHljCVU_Zzm0Ept8j4AJUCBHqB-ZSZk/exec';
 const CACHE_KEY = 'kas_data';
 const CACHE_KEY_HISTORY = 'kas_history';
-const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 jam (cache bisa lebih lama karena selalu diupdate)
+const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 jam
 const START_YEAR = 2025;
 const START_MONTH = 6;
 
@@ -12,7 +12,7 @@ let currentBulan = new Date().getMonth() + 1;
 let availableMonths = [];
 let allHistoryData = [];
 let historyLoaded = false;
-let isFetching = false; // Mencegah fetch ganda
+let isFetching = false;
 let isFetchingHistory = false;
 
 // ==================== DOM REFS ====================
@@ -37,8 +37,6 @@ function getCache(key) {
         const raw = localStorage.getItem(CACHE_KEY + '_' + key);
         if (!raw) return null;
         const data = JSON.parse(raw);
-        // Cache tetap valid, tidak perlu cek expiry untuk load
-        // Tapi kita tetap simpan timestamp untuk info
         return data.value;
     } catch (e) { return null; }
 }
@@ -170,9 +168,8 @@ document.querySelectorAll('.menu-panel ul li').forEach(item => {
             } else {
                 document.querySelector('.tab-selector').style.display = 'none';
                 document.querySelectorAll('.panel').forEach(p => p.classList.add('active'));
-                if (!historyLoaded && allHistoryData.length === 0) {
-                    loadHistory();
-                } else if (allHistoryData.length > 0) {
+                // Tampilkan history jika sudah ada
+                if (allHistoryData.length > 0) {
                     renderHistory(allHistoryData);
                     loadingHistory.style.display = 'none';
                     historyContainer.style.display = 'block';
@@ -216,9 +213,7 @@ window.addEventListener('resize', function() {
         panels.forEach(p => p.classList.add('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('.tab-btn[data-tab="kas"]').classList.add('active');
-        if (!historyLoaded && allHistoryData.length === 0) {
-            loadHistory();
-        } else if (allHistoryData.length > 0) {
+        if (allHistoryData.length > 0) {
             renderHistory(allHistoryData);
             loadingHistory.style.display = 'none';
             historyContainer.style.display = 'block';
@@ -233,12 +228,12 @@ window.addEventListener('resize', function() {
                 $('panelKas').classList.add('active');
             } else if (target === 'history') {
                 $('panelHistory').classList.add('active');
-                if (!historyLoaded && allHistoryData.length === 0) {
-                    loadHistory();
-                } else if (allHistoryData.length > 0) {
+                if (allHistoryData.length > 0) {
                     renderHistory(allHistoryData);
                     loadingHistory.style.display = 'none';
                     historyContainer.style.display = 'block';
+                } else {
+                    loadHistory();
                 }
             }
         }
@@ -331,52 +326,68 @@ function updateHeader(data) {
 }
 
 // ==================== HISTORY ====================
-async function loadHistory() {
+function loadHistory() {
     if (isFetchingHistory) return;
     isFetchingHistory = true;
 
-    // Load dari cache dulu
+    // Tampilkan loading
+    loadingHistory.style.display = 'block';
+    historyContainer.style.display = 'none';
+
+    // Cek cache
     const cachedHistory = getHistoryCache();
-    if (cachedHistory) {
-        console.log('✅ Load history dari cache');
+    if (cachedHistory && cachedHistory.length > 0) {
+        console.log('✅ Load history dari cache, jumlah:', cachedHistory.length);
         allHistoryData = cachedHistory;
         historyLoaded = true;
         renderHistory(allHistoryData);
         loadingHistory.style.display = 'none';
         historyContainer.style.display = 'block';
-    } else {
-        loadingHistory.style.display = 'block';
-        historyContainer.style.display = 'none';
     }
 
     // Fetch data baru di background
-    try {
-        const res = await fetch(BASE_URL + '?action=getHistory&limit=100');
-        const data = await res.json();
-        if (data.success && data.data) {
-            allHistoryData = data.data;
-            historyLoaded = true;
-            setHistoryCache(allHistoryData);
-            console.log('✅ History updated from server');
-            // Render ulang dengan data baru
-            renderHistory(allHistoryData);
-            loadingHistory.style.display = 'none';
-            historyContainer.style.display = 'block';
-        }
-    } catch (e) {
-        console.warn('Gagal fetch history:', e);
-        if (!cachedHistory) {
-            loadingHistory.style.display = 'none';
-            historyBody.innerHTML =
-                '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f44336;">❌ Gagal memuat history</td></tr>';
-            historyContainer.style.display = 'block';
-        }
-    }
-    isFetchingHistory = false;
+    fetch(BASE_URL + '?action=getHistory&limit=100')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data && data.data.length > 0) {
+                allHistoryData = data.data;
+                historyLoaded = true;
+                setHistoryCache(allHistoryData);
+                console.log('✅ History updated from server, jumlah:', allHistoryData.length);
+                renderHistory(allHistoryData);
+                loadingHistory.style.display = 'none';
+                historyContainer.style.display = 'block';
+            } else if (!cachedHistory || cachedHistory.length === 0) {
+                // Tidak ada data sama sekali
+                loadingHistory.style.display = 'none';
+                historyBody.innerHTML =
+                    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#5a6488;">📭 Belum ada transaksi</td></tr>';
+                historyContainer.style.display = 'block';
+            }
+        })
+        .catch(() => {
+            if (!cachedHistory || cachedHistory.length === 0) {
+                loadingHistory.style.display = 'none';
+                historyBody.innerHTML =
+                    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f44336;">❌ Gagal memuat history</td></tr>';
+                historyContainer.style.display = 'block';
+            }
+        })
+        .finally(() => {
+            isFetchingHistory = false;
+        });
 }
 
 // ==================== RENDER HISTORY ====================
 function renderHistory(data) {
+    if (!data || data.length === 0) {
+        historyBody.innerHTML =
+            '<tr><td colspan="5" style="text-align:center;padding:20px;color:#5a6488;">📭 Belum ada transaksi</td></tr>';
+        historyContainer.style.display = 'block';
+        loadingHistory.style.display = 'none';
+        return;
+    }
+
     let html = '';
     for (const item of data) {
         const date = new Date(item.date);
@@ -397,8 +408,7 @@ function renderHistory(data) {
         html += '<td class="col-admin">' + (item.adm || '-') + '</td>';
         html += '</tr>';
     }
-    historyBody.innerHTML = html ||
-        '<tr><td colspan="5" style="text-align:center;padding:20px;color:#5a6488;">📭 Tidak ada data</td></tr>';
+    historyBody.innerHTML = html;
     historyContainer.style.display = 'block';
     loadingHistory.style.display = 'none';
 }
@@ -493,7 +503,7 @@ async function loadData() {
         showSkeleton(30);
     }
 
-    // Fetch data baru di background (stale-while-revalidate)
+    // Fetch data baru di background
     if (!isFetching) {
         isFetching = true;
         try {
@@ -503,11 +513,8 @@ async function loadData() {
             const data = await res.json();
 
             if (data.success) {
-                // Update cache dengan data baru
                 setCache(key, data);
                 console.log('✅ Data updated from server untuk ' + key);
-                
-                // Render ulang dengan data baru
                 renderTable(data);
                 updateHeader(data);
                 monthLabel.textContent = data.bulanNama || (currentBulan + '/' + currentTahun);
@@ -527,39 +534,8 @@ async function loadData() {
         isFetching = false;
     }
 
-    // Load history di background
-    if (!historyLoaded) {
-        const cachedHistory = getHistoryCache();
-        if (cachedHistory) {
-            allHistoryData = cachedHistory;
-            historyLoaded = true;
-            if (document.querySelector('.panel-history.active') || window.innerWidth >= 900) {
-                renderHistory(allHistoryData);
-                loadingHistory.style.display = 'none';
-                historyContainer.style.display = 'block';
-            }
-        }
-        // Fetch history di background
-        setTimeout(() => {
-            if (!isFetchingHistory) {
-                fetch(BASE_URL + '?action=getHistory&limit=100')
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.success && data.data) {
-                            allHistoryData = data.data;
-                            historyLoaded = true;
-                            setHistoryCache(allHistoryData);
-                            console.log('✅ History updated from server');
-                            if (document.querySelector('.panel-history.active') || window.innerWidth >= 900) {
-                                renderHistory(allHistoryData);
-                                loadingHistory.style.display = 'none';
-                                historyContainer.style.display = 'block';
-                            }
-                        }
-                    }).catch(() => {});
-            }
-        }, 500);
-    }
+    // LOAD HISTORY - PASTIKAN DIPANGGIL
+    loadHistory();
 }
 
 // ==================== UTILITY ====================
@@ -611,5 +587,8 @@ window.forceRefresh = function() {
     localStorage.removeItem(CACHE_KEY + '_' + key);
     localStorage.removeItem(CACHE_KEY_HISTORY);
     console.log('🗑️ Cache cleared, reloading...');
+    // Reset state
+    allHistoryData = [];
+    historyLoaded = false;
     loadData();
 };

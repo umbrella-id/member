@@ -31,7 +31,7 @@ const historyBody = $('historyBody');
 const historyContainer = $('historyContainer');
 const loadingHistory = $('loadingHistory');
 
-// ==================== CACHE ====================
+// ==================== CACHE FUNCTIONS ====================
 function getCache(key) {
     try {
         const raw = localStorage.getItem(CACHE_KEY + '_' + key);
@@ -50,7 +50,6 @@ function setCache(key, value) {
     } catch (e) { /* ignore */ }
 }
 
-// ==================== CACHE HISTORY ====================
 function getHistoryCache() {
     try {
         const raw = localStorage.getItem(CACHE_KEY_HISTORY);
@@ -168,7 +167,6 @@ document.querySelectorAll('.menu-panel ul li').forEach(item => {
             } else {
                 document.querySelector('.tab-selector').style.display = 'none';
                 document.querySelectorAll('.panel').forEach(p => p.classList.add('active'));
-                // Tampilkan history jika sudah ada
                 if (allHistoryData.length > 0) {
                     renderHistory(allHistoryData);
                     loadingHistory.style.display = 'none';
@@ -330,42 +328,47 @@ function loadHistory() {
     if (isFetchingHistory) return;
     isFetchingHistory = true;
 
-    // Tampilkan loading
-    loadingHistory.style.display = 'block';
-    historyContainer.style.display = 'none';
-
-    // Cek cache
+    // 1. CEK CACHE DULU
     const cachedHistory = getHistoryCache();
+    
     if (cachedHistory && cachedHistory.length > 0) {
-        console.log('✅ Load history dari cache, jumlah:', cachedHistory.length);
+        console.log('✅ HISTORY: Load dari cache, jumlah:', cachedHistory.length);
         allHistoryData = cachedHistory;
         historyLoaded = true;
         renderHistory(allHistoryData);
         loadingHistory.style.display = 'none';
         historyContainer.style.display = 'block';
+    } else {
+        console.log('⏳ HISTORY: Tidak ada cache, tampilkan loading');
+        loadingHistory.style.display = 'block';
+        historyContainer.style.display = 'none';
     }
 
-    // Fetch data baru di background
+    // 2. FETCH DATA BARU DI BACKGROUND (SELALU JALAN)
     fetch(BASE_URL + '?action=getHistory&limit=100')
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
         .then(data => {
             if (data.success && data.data && data.data.length > 0) {
+                console.log('🔄 HISTORY: Update dari server, jumlah:', data.data.length);
                 allHistoryData = data.data;
                 historyLoaded = true;
-                setHistoryCache(allHistoryData);
-                console.log('✅ History updated from server, jumlah:', allHistoryData.length);
+                setHistoryCache(allHistoryData); // Simpan ke cache
                 renderHistory(allHistoryData);
                 loadingHistory.style.display = 'none';
                 historyContainer.style.display = 'block';
             } else if (!cachedHistory || cachedHistory.length === 0) {
-                // Tidak ada data sama sekali
+                // Tidak ada cache dan server return empty
                 loadingHistory.style.display = 'none';
                 historyBody.innerHTML =
                     '<tr><td colspan="5" style="text-align:center;padding:20px;color:#5a6488;">📭 Belum ada transaksi</td></tr>';
                 historyContainer.style.display = 'block';
             }
         })
-        .catch(() => {
+        .catch((err) => {
+            console.warn('⚠️ HISTORY: Gagal fetch, pakai cache jika ada', err);
             if (!cachedHistory || cachedHistory.length === 0) {
                 loadingHistory.style.display = 'none';
                 historyBody.innerHTML =
@@ -488,22 +491,22 @@ nextBtn.addEventListener('click', function() {
 async function loadData() {
     const key = currentTahun + '-' + currentBulan;
     
-    // Cek cache
+    // 1. CEK CACHE
     const cached = getCache(key);
     
     if (cached) {
-        console.log('✅ Load dari cache untuk ' + key);
+        console.log('✅ DATA KAS: Load dari cache untuk ' + key);
         renderTable(cached);
         updateHeader(cached);
         monthLabel.textContent = cached.bulanNama || (currentBulan + '/' + currentTahun);
         updateNavButtons();
         hideSkeleton();
     } else {
-        // Tidak ada cache, tampilkan skeleton
+        console.log('⏳ DATA KAS: Tidak ada cache, tampilkan skeleton');
         showSkeleton(30);
     }
 
-    // Fetch data baru di background
+    // 2. FETCH DATA BARU DI BACKGROUND
     if (!isFetching) {
         isFetching = true;
         try {
@@ -514,7 +517,7 @@ async function loadData() {
 
             if (data.success) {
                 setCache(key, data);
-                console.log('✅ Data updated from server untuk ' + key);
+                console.log('🔄 DATA KAS: Update dari server untuk ' + key);
                 renderTable(data);
                 updateHeader(data);
                 monthLabel.textContent = data.bulanNama || (currentBulan + '/' + currentTahun);
@@ -526,7 +529,7 @@ async function loadData() {
                 }
             }
         } catch (e) {
-            console.error('Error fetch data:', e);
+            console.error('❌ DATA KAS: Error fetch:', e);
             if (!cached) {
                 showError('Error: ' + e.message);
             }
@@ -534,8 +537,39 @@ async function loadData() {
         isFetching = false;
     }
 
-    // LOAD HISTORY - PASTIKAN DIPANGGIL
+    // 3. LOAD HISTORY (CACHE FIRST, UPDATE BACKGROUND)
     loadHistory();
+}
+
+// ==================== PRELOAD BULAN SEBELUMNYA ====================
+function preloadPrevMonth() {
+    let idx = -1;
+    for (let i = 0; i < availableMonths.length; i++) {
+        if (availableMonths[i].tahun === currentTahun && availableMonths[i].bulan === currentBulan) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx > 0) {
+        const prev = availableMonths[idx - 1];
+        const key = prev.tahun + '-' + prev.bulan;
+        // Cek apakah sudah ada cache
+        if (!getCache(key)) {
+            console.log('⏳ PRELOAD: Fetch ' + prev.label);
+            const url = BASE_URL + '?action=getMonthlyTable&tahun=' + prev.tahun + '&bulan=' + prev.bulan;
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        setCache(key, data);
+                        console.log('✅ PRELOAD: Cache saved untuk ' + prev.label);
+                    }
+                })
+                .catch(() => {});
+        } else {
+            console.log('✅ PRELOAD: Sudah ada cache untuk ' + prev.label);
+        }
+    }
 }
 
 // ==================== UTILITY ====================
@@ -561,6 +595,8 @@ function getNamaBulan(bulan) {
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 APP STARTED');
+    
     availableMonths = generateMonthList();
     const last = availableMonths[availableMonths.length - 1];
     currentTahun = last.tahun;
@@ -579,6 +615,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load data dengan logika cache first
     loadData();
+
+    // Preload bulan sebelumnya (delay biar tidak compete)
+    setTimeout(preloadPrevMonth, 500);
 });
 
 // ==================== FORCE REFRESH ====================
@@ -587,8 +626,21 @@ window.forceRefresh = function() {
     localStorage.removeItem(CACHE_KEY + '_' + key);
     localStorage.removeItem(CACHE_KEY_HISTORY);
     console.log('🗑️ Cache cleared, reloading...');
-    // Reset state
     allHistoryData = [];
     historyLoaded = false;
     loadData();
+};
+
+// ==================== DEBUG: Cek Cache ====================
+window.showCache = function() {
+    console.log('📦 CACHE DATA:');
+    console.log('  - Kas:', localStorage.getItem(CACHE_KEY + '_' + currentTahun + '-' + currentBulan) ? '✅ Ada' : '❌ Tidak ada');
+    console.log('  - History:', localStorage.getItem(CACHE_KEY_HISTORY) ? '✅ Ada' : '❌ Tidak ada');
+    
+    // Tampilkan detail
+    const history = getHistoryCache();
+    if (history) {
+        console.log('  - History jumlah:', history.length);
+        console.log('  - History sample:', history.slice(0, 3));
+    }
 };

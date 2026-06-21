@@ -501,7 +501,7 @@ tr:hover {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(11, 14, 26, 0.7);
+    background: rgba(11, 14, 26, 0.0);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     z-index: 200;

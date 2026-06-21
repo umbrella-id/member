@@ -64,13 +64,8 @@ document.querySelectorAll('.menu-panel ul li').forEach(function(item) {
         const page = this.dataset.page;
         toggleMenu(false);
 
-        // 🔥 SIMPAN TAB TERAKHIR (KECUALI SARAN)
         if (page !== 'saran') {
             lastActiveTab = page;
-            // 🔥 UPDATE JUGA KE WINDOW
-            if (window.setLastActiveTab) {
-                window.setLastActiveTab(page);
-            }
         }
 
         if (page === 'laporan') {

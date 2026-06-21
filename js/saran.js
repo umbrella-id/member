@@ -47,9 +47,30 @@ function closeSaran() {
         mainContent.innerHTML = '';
     }
 
-    // Kembali ke laporan kas
-    if (typeof renderLaporan === 'function') {
-        renderLaporan();
+    // 🔥 KEMBALI KE TAB SEBELUMNYA
+    const lastTab = window.getLastActiveTab ? window.getLastActiveTab() : 'laporan';
+    
+    // Update menu aktif di panel
+    document.querySelectorAll('.menu-panel ul li').forEach(function(i) {
+        i.classList.remove('active');
+    });
+    const menuItem = document.querySelector('.menu-panel ul li[data-page="' + lastTab + '"]');
+    if (menuItem) menuItem.classList.add('active');
+
+    // Render tab yang sesuai
+    if (lastTab === 'laporan') {
+        if (typeof renderLaporan === 'function') {
+            renderLaporan();
+        }
+    } else if (lastTab === 'segera') {
+        if (typeof renderSegera === 'function') {
+            renderSegera();
+        }
+    } else {
+        // Fallback ke laporan
+        if (typeof renderLaporan === 'function') {
+            renderLaporan();
+        }
     }
 }
 
@@ -134,7 +155,22 @@ function initSaranEvents() {
     console.log("✅ Kotak Saran terintegrasi");
 }
 
+// ==================== RENDER SEGERA ====================
+function renderSegera() {
+    const mainContent = document.getElementById('mainContent');
+    if (!mainContent) return;
+
+    mainContent.innerHTML = `
+        <div class="segera-hadir">
+            <i class="fas fa-tools"></i>
+            <h2>Segera Hadir</h2>
+            <p>Fitur ini sedang dalam pengembangan</p>
+        </div>
+    `;
+}
+
 // ==================== EXPOSE ====================
 window.renderSaran = renderSaran;
 window.closeSaran = closeSaran;
 window.resetSaranForm = resetSaranForm;
+window.renderSegera = renderSegera;

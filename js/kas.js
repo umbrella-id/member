@@ -15,7 +15,7 @@ let historyLoaded = false;
 let isFetching = false;
 let isFetchingHistory = false;
 let historyRendered = false;
-let isNavigating = false; // Flag untuk mencegah navigasi ganda
+let isNavigating = false;
 
 // ==================== CACHE FUNCTIONS ====================
 function getCache(key) {
@@ -96,14 +96,10 @@ function formatSpinaRaw(angka) {
 // ==================== UPDATE MONTH LABEL ====================
 function updateMonthLabel(data) {
     if (!monthLabel) return;
-    
-    // Prioritaskan dari data yang diterima
     if (data && data.bulanNama) {
         monthLabel.textContent = data.bulanNama;
         return;
     }
-    
-    // Fallback: gunakan currentTahun/currentBulan
     if (currentTahun && currentBulan) {
         monthLabel.textContent = getNamaBulan(currentBulan) + ' ' + currentTahun;
     }
@@ -116,9 +112,7 @@ function renderLaporan() {
 
     const isWide = window.innerWidth >= 900;
 
-    // Build HTML
     let html = `
-        <!-- HEADER KAS -->
         <div class="header-kas" id="headerKas">
             <div class="saldo-utama">
                 <span class="total" id="totalKasHeader">0 S</span>
@@ -127,16 +121,12 @@ function renderLaporan() {
             <div class="bendahara-list" id="bendaharaList"></div>
         </div>
 
-        <!-- TAB SELECTOR (layar kecil) -->
         <div class="tab-selector" id="tabSelector">
             <button class="tab-btn active" data-tab="kas"><i class="fas fa-file-invoice"></i> Laporan Kas</button>
             <button class="tab-btn" data-tab="history"><i class="fas fa-history"></i> History</button>
         </div>
 
-        <!-- DUAL PANEL -->
         <div class="dual-panel" id="dualPanel">
-
-            <!-- PANEL KIRI: LAPORAN KAS -->
             <div class="panel panel-kas" id="panelKas">
                 <div class="panel-header">
                     <span><i class="fas fa-file-invoice"></i> Laporan Kas</span>
@@ -177,7 +167,6 @@ function renderLaporan() {
                 </div>
             </div>
 
-            <!-- PANEL KANAN: HISTORY -->
             <div class="panel panel-history" id="panelHistory">
                 <div class="panel-header">
                     <span><i class="fas fa-history"></i> History</span>
@@ -205,48 +194,29 @@ function renderLaporan() {
                     </div>
                 </div>
             </div>
-
         </div>
     `;
 
     mainContent.innerHTML = html;
-
-    // Inisialisasi DOM refs
     initKasDOM();
 
-    // Set initial active panel sesuai mode
     const panelKas = document.getElementById('panelKas');
     const panelHistory = document.getElementById('panelHistory');
     const tabSelector = document.getElementById('tabSelector');
 
     if (isWide) {
-        if (panelKas) {
-            panelKas.style.display = 'flex';
-            panelKas.classList.add('active');
-        }
-        if (panelHistory) {
-            panelHistory.style.display = 'flex';
-            panelHistory.classList.add('active');
-        }
+        if (panelKas) { panelKas.style.display = 'flex'; panelKas.classList.add('active'); }
+        if (panelHistory) { panelHistory.style.display = 'flex'; panelHistory.classList.add('active'); }
         if (tabSelector) tabSelector.style.display = 'none';
     } else {
-        if (panelKas) {
-            panelKas.style.display = 'flex';
-            panelKas.classList.add('active');
-        }
-        if (panelHistory) {
-            panelHistory.style.display = 'none';
-            panelHistory.classList.remove('active');
-        }
+        if (panelKas) { panelKas.style.display = 'flex'; panelKas.classList.add('active'); }
+        if (panelHistory) { panelHistory.style.display = 'none'; panelHistory.classList.remove('active'); }
         if (tabSelector) tabSelector.style.display = 'flex';
-        document.querySelectorAll('.tab-btn').forEach(function(b) {
-            b.classList.remove('active');
-        });
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         const kasBtn = document.querySelector('.tab-btn[data-tab="kas"]');
         if (kasBtn) kasBtn.classList.add('active');
     }
 
-    // Load data
     loadData();
 }
 
@@ -269,14 +239,12 @@ function initKasDOM() {
     historyContainer = document.getElementById('historyContainer');
     loadingHistory = document.getElementById('loadingHistory');
 
-    // Generate months
     availableMonths = generateMonthList();
     const last = availableMonths[availableMonths.length - 1];
     currentTahun = last.tahun;
     currentBulan = last.bulan;
     if (monthLabel) monthLabel.textContent = last.label;
 
-    // Event listeners
     initKasEvents();
     initPopup();
 }
@@ -404,19 +372,18 @@ function loadData() {
         console.log('✅ DATA KAS: Load dari cache untuk ' + key);
         renderTable(cached);
         updateHeader(cached);
-        // 🔥 UPDATE MONTH LABEL DARI CACHE
         updateMonthLabel(cached);
         updateNavButtons();
         hideSkeleton();
     } else {
         console.log('⏳ DATA KAS: Tidak ada cache, tampilkan skeleton');
         showSkeleton(30);
-        // Tampilkan label sementara dari state
         updateMonthLabel(null);
     }
 
     loadHistory();
 
+    // 🔥 LOAD AWAL: SELALU FETCH UNTUK UPDATE CACHE
     if (!isFetching) {
         isFetching = true;
         const url = BASE_URL + '?action=getMonthlyTable&tahun=' + currentTahun + '&bulan=' + currentBulan;
@@ -428,7 +395,6 @@ function loadData() {
                     console.log('🔄 DATA KAS: Update dari server untuk ' + key);
                     renderTable(data);
                     updateHeader(data);
-                    // 🔥 UPDATE MONTH LABEL DARI DATA SERVER
                     updateMonthLabel(data);
                     updateNavButtons();
                     hideSkeleton();
@@ -436,15 +402,58 @@ function loadData() {
                     if (!cached) showError(data.error || 'Gagal memuat data');
                 }
                 isFetching = false;
-                isNavigating = false;
             })
             .catch(e => {
                 console.error('❌ DATA KAS: Error fetch:', e);
                 if (!cached) showError('Error: ' + e.message);
                 isFetching = false;
-                isNavigating = false;
             });
     }
+}
+
+// ==================== LOAD DATA NAVIGASI (CACHE FIRST, FETCH ONLY IF NO CACHE) ====================
+function loadDataNavigation() {
+    const key = currentTahun + '-' + currentBulan;
+    const cached = getCache(key);
+
+    if (cached) {
+        console.log('✅ NAVIGASI: Load dari cache untuk ' + key);
+        renderTable(cached);
+        updateHeader(cached);
+        updateMonthLabel(cached);
+        updateNavButtons();
+        hideSkeleton();
+        isNavigating = false;
+        // TIDAK FETCH - karena navigasi hanya pakai cache
+        return;
+    }
+
+    // Jika tidak ada cache, fetch data
+    console.log('⏳ NAVIGASI: Tidak ada cache untuk ' + key + ', fetch dari server');
+    showSkeleton(30);
+    
+    const url = BASE_URL + '?action=getMonthlyTable&tahun=' + currentTahun + '&bulan=' + currentBulan;
+    fetch(url)
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(data => {
+            if (data.success) {
+                setCache(key, data);
+                console.log('🔄 NAVIGASI: Data dari server untuk ' + key);
+                renderTable(data);
+                updateHeader(data);
+                updateMonthLabel(data);
+                updateNavButtons();
+                hideSkeleton();
+            } else {
+                showError(data.error || 'Gagal memuat data');
+            }
+            isNavigating = false;
+        })
+        .catch(e => {
+            console.error('❌ NAVIGASI: Error fetch:', e);
+            showError('Error: ' + e.message);
+            isNavigating = false;
+        });
 }
 
 // ==================== HISTORY ====================
@@ -804,10 +813,10 @@ function initKasEvents() {
         }
     });
 
-    // 🔥 NAVIGASI BULAN - DENGAN CEK AGAAR TIDAK DOUBLE
+    // 🔥 NAVIGASI BULAN - LOGIKA BARU
     if (prevBtn) {
         prevBtn.addEventListener('click', function() {
-            if (isNavigating || isFetching) return;
+            if (isNavigating) return;
             isNavigating = true;
             
             let idx = -1;
@@ -820,9 +829,9 @@ function initKasEvents() {
             if (idx > 0) {
                 currentTahun = availableMonths[idx - 1].tahun;
                 currentBulan = availableMonths[idx - 1].bulan;
-                // 🔥 UPDATE LABEL DULU SEBELUM LOAD DATA
                 if (monthLabel) monthLabel.textContent = availableMonths[idx - 1].label;
-                loadData();
+                // 🔥 PAKAI loadDataNavigation - TIDAK FETCH JIKA ADA CACHE
+                loadDataNavigation();
             } else {
                 isNavigating = false;
             }
@@ -831,7 +840,7 @@ function initKasEvents() {
 
     if (nextBtn) {
         nextBtn.addEventListener('click', function() {
-            if (isNavigating || isFetching) return;
+            if (isNavigating) return;
             isNavigating = true;
             
             let idx = -1;
@@ -844,9 +853,9 @@ function initKasEvents() {
             if (idx < availableMonths.length - 1 && idx !== -1) {
                 currentTahun = availableMonths[idx + 1].tahun;
                 currentBulan = availableMonths[idx + 1].bulan;
-                // 🔥 UPDATE LABEL DULU SEBELUM LOAD DATA
                 if (monthLabel) monthLabel.textContent = availableMonths[idx + 1].label;
-                loadData();
+                // 🔥 PAKAI loadDataNavigation - TIDAK FETCH JIKA ADA CACHE
+                loadDataNavigation();
             } else {
                 isNavigating = false;
             }

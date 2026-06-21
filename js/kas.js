@@ -596,9 +596,17 @@ function initPopup() {
 
     function closePopup() {
         if (popupOverlay) popupOverlay.classList.remove('active');
+        
+        // 🔥 SET STATE POPUP TERTUTUP
+        if (window.setDetailPopupOpen) {
+            window.setDetailPopupOpen(false);
+        }
+        
         if (popupHistory.length > 0) {
             popupHistory.pop();
-            if (popupHistory.length === 0) history.replaceState(null, null, ' ');
+            if (popupHistory.length === 0) {
+                history.replaceState(null, null, ' ');
+            }
         }
     }
 
@@ -623,6 +631,12 @@ function initPopup() {
         if (popupNotes) popupNotes.textContent = item.notes || 'Tidak ada catatan';
 
         if (popupOverlay) popupOverlay.classList.add('active');
+        
+        // 🔥 SET STATE POPUP TERBUKA
+        if (window.setDetailPopupOpen) {
+            window.setDetailPopupOpen(true);
+        }
+        
         popupHistory.push('popup');
         history.pushState({ popup: true }, null, '#popup');
     }
@@ -634,12 +648,13 @@ function initPopup() {
         });
     }
 
-    window.addEventListener('popstate', function(e) {
-        if (popupOverlay && popupOverlay.classList.contains('active')) {
-            closePopup();
-            e.preventDefault();
-        }
-    });
+    // ❌ HAPUS INI - pindah ke app.js
+    // window.addEventListener('popstate', function(e) {
+    //     if (popupOverlay && popupOverlay.classList.contains('active')) {
+    //         closePopup();
+    //         e.preventDefault();
+    //     }
+    // });
 
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && popupOverlay && popupOverlay.classList.contains('active')) {

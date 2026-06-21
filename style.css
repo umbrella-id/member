@@ -375,30 +375,31 @@ td.col-no {
     font-size: 11px;
 }
 
-/* IGN - Tebal seperti history */
+/* IGN - Tebal, ukuran 12px */
 #tableBody td.ign {
     font-weight: 700 !important;
     color: #ffffff !important;
     white-space: nowrap;
+    font-size: 12px !important;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Centang - Hijau untuk paid */
+/* Centang - Icon lebih besar */
 #tableBody td .paid {
     color: var(--color-primary);
-    font-size: 13px !important;
+    font-size: 16px !important;
 }
 
-/* Centang - Merah untuk unpaid */
 #tableBody td .unpaid {
     color: var(--text-dim);
-    font-size: 13px !important;
+    font-size: 16px !important;
 }
 
 /* Centang - Redup untuk empty (strip) */
 #tableBody td .empty {
     color: #4a5270 !important;
     opacity: 0.3 !important;
+    font-size: 14px !important;
 }
 
 /* Cell centang */
@@ -487,7 +488,7 @@ tr:hover {
 }
 
 /* ==========================================
-   HISTORY - DENGAN FONT SAMA
+   HISTORY - HOVER FULL ROW
    ========================================== */
 .history-wrap {
     overflow: auto;
@@ -527,8 +528,17 @@ tr:hover {
     text-overflow: ellipsis;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
-.history-wrap tr:hover {
-    background: #1a1f2e;
+
+/* 🔥 HOVER FULL ROW - SOROT SELURUH BARIS */
+.history-wrap tbody tr {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.history-wrap tbody tr:hover {
+    background: #1a1f2e !important;
+}
+.history-wrap tbody tr:active {
+    background: #252b42 !important;
 }
 
 .history-wrap .col-date {
@@ -542,6 +552,7 @@ tr:hover {
 .history-wrap .col-ign {
     font-weight: 700;
     color: #fff;
+    font-size: 12px !important;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 .history-wrap .col-amount {
@@ -564,11 +575,7 @@ tr:hover {
     color: var(--text-muted);
     max-width: 200px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    cursor: pointer;
-    position: relative;
-}
-.history-wrap .col-notes:hover {
-    color: var(--color-primary);
+    font-size: 12px !important;
 }
 .history-wrap .col-admin {
     width: 15%;
@@ -594,7 +601,7 @@ tr:hover {
 }
 
 /* ==========================================
-   POPUP DETAIL NOTES
+   POPUP - SEMI TRANSPARAN + BLUR
    ========================================== */
 .popup-overlay {
     display: none;
@@ -603,12 +610,13 @@ tr:hover {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(6px);
+    background: rgba(11, 14, 26, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     z-index: 200;
     justify-content: center;
     align-items: center;
-    animation: fadeIn 0.2s ease;
+    animation: fadeIn 0.25s ease;
 }
 
 .popup-overlay.active {
@@ -626,6 +634,7 @@ tr:hover {
     overflow-y: auto;
     position: relative;
     animation: slideUp 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
 .popup-content .popup-close {
@@ -717,11 +726,11 @@ tr:hover {
 
 @keyframes slideUp {
     from {
-        transform: translateY(30px);
+        transform: translateY(30px) scale(0.96);
         opacity: 0;
     }
     to {
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
         opacity: 1;
     }
 }
@@ -851,6 +860,9 @@ tr:hover {
     }
     #tableBody td .paid,
     #tableBody td .unpaid {
+        font-size: 14px !important;
+    }
+    #tableBody td .empty {
         font-size: 12px !important;
     }
     #tableBody td.deposit {
@@ -949,6 +961,9 @@ tr:hover {
     }
     #tableBody td .paid,
     #tableBody td .unpaid {
+        font-size: 12px !important;
+    }
+    #tableBody td .empty {
         font-size: 10px !important;
     }
     #tableBody td.deposit {

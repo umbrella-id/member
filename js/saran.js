@@ -61,7 +61,7 @@ function closeSaran() {
         popup.remove();
     }
 
-    // 🔥 SET STATE POPUP TERTUTUP
+    // SET STATE POPUP TERTUTUP
     if (window.setSaranPopupOpen) {
         window.setSaranPopupOpen(false);
     }
@@ -75,10 +75,10 @@ function closeSaran() {
     const headerKas = document.querySelector('.header-kas');
     if (headerKas) headerKas.style.display = 'flex';
 
-    // 🔥 AMBIL TAB SEBELUMNYA
+    // AMBIL TAB SEBELUMNYA
     const lastTab = window.getLastActiveTab ? window.getLastActiveTab() : 'laporan';
     
-    // 🔥 UPDATE MENU AKTIF DI PANEL - PINDAH KE TAB SEBELUMNYA
+    // UPDATE MENU AKTIF DI FLOATING PANEL
     document.querySelectorAll('.menu-panel ul li').forEach(function(i) {
         i.classList.remove('active');
     });
@@ -86,12 +86,11 @@ function closeSaran() {
     if (menuItem) {
         menuItem.classList.add('active');
     } else {
-        // Fallback ke laporan
         const fallbackMenu = document.querySelector('.menu-panel ul li[data-page="laporan"]');
         if (fallbackMenu) fallbackMenu.classList.add('active');
     }
 
-    // 🔥 RENDER TAB YANG SESUAI
+    // RENDER TAB YANG SESUAI
     if (lastTab === 'laporan') {
         if (typeof renderLaporan === 'function') {
             renderLaporan();

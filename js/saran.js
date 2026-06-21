@@ -11,20 +11,26 @@ if (!myUID) {
 
 // ==================== RENDER SARAN ====================
 function renderSaran() {
-    const mainContent = document.getElementById('mainContent');
-    if (!mainContent) return;
+    // 🔥 CEK APAKAH POPUP SUDAH ADA
+    if (document.getElementById('saranPopupOverlay')) {
+        // Jika sudah ada, tampilkan saja
+        const popup = document.getElementById('saranPopupOverlay');
+        popup.style.display = 'flex';
+        return;
+    }
 
-    mainContent.innerHTML = `
-        <div class="saran-overlay">
-            <div class="saran-container">
-                <div class="saran-header">
-                    <button class="saran-close-btn" id="saranCloseBtn">
+    // 🔥 BUAT POPUP OVERLAY DI ATAS KONTEN YANG ADA
+    const popupHTML = `
+        <div class="saran-popup-overlay" id="saranPopupOverlay">
+            <div class="saran-popup-container">
+                <div class="saran-popup-header">
+                    <button class="saran-popup-close" id="saranCloseBtn">
                         <i class="fas fa-times"></i>
                     </button>
                     <h2><i class="fas fa-envelope"></i> KIRIM SARAN</h2>
                     <p>Kritik, saran, atau aspirasi Anda sangat berharga</p>
                 </div>
-                <div class="saran-body">
+                <div class="saran-popup-body">
                     <div class="input-group">
                         <label><i class="fas fa-pen"></i> PESAN ANDA</label>
                         <textarea id="saranMessage" placeholder="Tulis saran, kritik, atau aspirasi Anda untuk perkembangan guild Umbrella..."></textarea>
@@ -37,27 +43,37 @@ function renderSaran() {
         </div>
     `;
 
+    // 🔥 TAMBAHKAN POPUP KE BODY, BUKAN MAIN CONTENT
+    document.body.insertAdjacentHTML('beforeend', popupHTML);
+
+    // 🔥 SEMBUNYIKAN HEADER KAS SAAT POPUP TERBUKA
+    const headerKas = document.querySelector('.header-kas');
+    if (headerKas) headerKas.style.display = 'none';
+
     initSaranEvents();
 }
 
 // ==================== CLOSE SARAN ====================
 function closeSaran() {
-    const mainContent = document.getElementById('mainContent');
-    if (mainContent) {
-        mainContent.innerHTML = '';
+    // 🔥 HAPUS POPUP DARI BODY
+    const popup = document.getElementById('saranPopupOverlay');
+    if (popup) {
+        popup.remove();
     }
+
+    // 🔥 TAMPILKAN KEMBALI HEADER KAS
+    const headerKas = document.querySelector('.header-kas');
+    if (headerKas) headerKas.style.display = 'flex';
 
     // 🔥 KEMBALI KE TAB SEBELUMNYA
     const lastTab = window.getLastActiveTab ? window.getLastActiveTab() : 'laporan';
     
-    // Update menu aktif di panel
     document.querySelectorAll('.menu-panel ul li').forEach(function(i) {
         i.classList.remove('active');
     });
     const menuItem = document.querySelector('.menu-panel ul li[data-page="' + lastTab + '"]');
     if (menuItem) menuItem.classList.add('active');
 
-    // Render tab yang sesuai
     if (lastTab === 'laporan') {
         if (typeof renderLaporan === 'function') {
             renderLaporan();
@@ -67,7 +83,6 @@ function closeSaran() {
             renderSegera();
         }
     } else {
-        // Fallback ke laporan
         if (typeof renderLaporan === 'function') {
             renderLaporan();
         }

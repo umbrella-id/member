@@ -1,217 +1,234 @@
-// ==================== KONFIGURASI SARAN ====================
-var GAS_MAIL_URL = "https://script.google.com/macros/s/AKfycbyv6cBEWlT9JsprJqdRVG2EiqRYrNlyu6uHxH6xuFG9PRXSwkO6aKi8-EHXm99puRQX/exec";
-
-// ==================== STATE SARAN ====================
-var isSendingSaran = false;
-var myUID = localStorage.getItem('u_uid_saran');
-if (!myUID) {
-    myUID = 'SARAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
-    localStorage.setItem('u_uid_saran', myUID);
-}
-var saranPopupHistory = [];
-
-// ==================== RENDER SARAN ====================
-function renderSaran() {
-    // Cek apakah popup sudah ada
-    if (document.getElementById('saranPopupOverlay')) {
-        var popup = document.getElementById('saranPopupOverlay');
-        popup.style.display = 'flex';
-        return;
-    }
-
-    // Buat popup overlay di atas konten yang ada
-    var popupHTML = '';
-    popupHTML += '<div class="saran-popup-overlay" id="saranPopupOverlay">';
-    popupHTML += '  <div class="saran-popup-container">';
-    popupHTML += '    <div class="saran-popup-header">';
-    popupHTML += '      <button class="saran-popup-close" id="saranCloseBtn">';
-    popupHTML += '        <i class="fas fa-times"></i>';
-    popupHTML += '      </button>';
-    popupHTML += '      <h2><i class="fas fa-envelope"></i> KIRIM SARAN</h2>';
-    popupHTML += '      <p>Kritik, saran, atau aspirasi Anda sangat berharga</p>';
-    popupHTML += '    </div>';
-    popupHTML += '    <div class="saran-popup-body">';
-    popupHTML += '      <div class="input-group">';
-    popupHTML += '        <label><i class="fas fa-pen"></i> PESAN ANDA</label>';
-    popupHTML += '        <textarea id="saranMessage" placeholder="Tulis saran, kritik, atau aspirasi Anda untuk perkembangan guild Umbrella..."></textarea>';
-    popupHTML += '      </div>';
-    popupHTML += '      <button class="send-btn" id="saranSendBtn">';
-    popupHTML += '        <i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
-    popupHTML += '      </button>';
-    popupHTML += '    </div>';
-    popupHTML += '  </div>';
-    popupHTML += '</div>';
-
-    document.body.insertAdjacentHTML('beforeend', popupHTML);
-
-    // SET STATE POPUP TERBUKA
-    if (window.setSaranPopupOpen) {
-        window.setSaranPopupOpen(true);
-    }
-    
-    saranPopupHistory.push('saran');
-    history.pushState({ saran: true }, null, '#saran');
-
-    // SEMBUNYIKAN HEADER KAS
-    var headerKas = document.querySelector('.header-kas');
-    if (headerKas) headerKas.style.display = 'none';
-
-    initSaranEvents();
+/* ==========================================
+   ROOT VARIABLES
+   ========================================== */
+:root {
+    --color-primary: #a855f7;
+    --color-primary-dark: #7c3aed;
+    --bg-dark: #0b0e1a;
+    --bg-solid-form: #141824;
+    --border-line: #2a2f45;
+    --text-main: #e0e0e0;
+    --text-muted: #8892b0;
+    --text-dim: #4a5270;
+    --color-positive: #4ade80;
+    --color-negative: #f87171;
 }
 
-// ==================== CLOSE SARAN ====================
-function closeSaran() {
-    // Hapus popup dari body
-    var popup = document.getElementById('saranPopupOverlay');
-    if (popup) {
-        popup.remove();
-    }
+/* ==========================================
+   RESET & GLOBAL
+   ========================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
 
-    // SET STATE POPUP TERTUTUP
-    if (window.setSaranPopupOpen) {
-        window.setSaranPopupOpen(false);
-    }
-    if (saranPopupHistory.length > 0) {
-        saranPopupHistory.pop();
-        if (saranPopupHistory.length === 0) {
-            history.replaceState(null, null, ' ');
-        }
-    }
+/* ==========================================
+   MAIN CONTENT
+   ========================================== */
+.main-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
 
-    // KEMBALI KE TAB SEBELUMNYA
-    var lastTab = window.getLastActiveTab ? window.getLastActiveTab() : 'laporan';
-    
-    // UPDATE MENU AKTIF DI FLOATING PANEL
-    var menuItems = document.querySelectorAll('.menu-panel ul li');
-    for (var i = 0; i < menuItems.length; i++) {
-        menuItems[i].classList.remove('active');
-    }
-    var menuItem = document.querySelector('.menu-panel ul li[data-page="' + lastTab + '"]');
-    if (menuItem) {
-        menuItem.classList.add('active');
-    } else {
-        var fallbackMenu = document.querySelector('.menu-panel ul li[data-page="laporan"]');
-        if (fallbackMenu) fallbackMenu.classList.add('active');
-    }
+/* ==========================================
+   FLOATING MENU
+   ========================================== */
+.menu-float {
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    z-index: 50;
+    background: transparent;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: 0.2s;
+}
+.menu-float:hover {
+    transform: scale(1.05);
+}
 
-    // RENDER TAB YANG SESUAI
-    if (lastTab === 'laporan') {
-        if (typeof renderLaporan === 'function') {
-            renderLaporan();
-        }
-    } else if (lastTab === 'crysta') {
-        if (typeof renderCrysta === 'function') {
-            renderCrysta();
-        }
-    } else if (lastTab === 'segera') {
-        if (typeof renderSegera === 'function') {
-            renderSegera();
-        }
-    } else {
-        if (typeof renderLaporan === 'function') {
-            renderLaporan();
-        }
+.menu-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+}
+.menu-overlay.open {
+    display: block;
+}
+
+.menu-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 270px;
+    height: 100%;
+    background: var(--bg-solid-form);
+    border-left: 2px solid var(--border-line);
+    padding: 30px 20px;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    z-index: 101;
+    overflow-y: auto;
+}
+.menu-panel.open {
+    transform: translateX(0);
+}
+.menu-panel .close-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 24px;
+    cursor: pointer;
+    float: right;
+}
+.menu-panel ul {
+    list-style: none;
+    margin-top: 40px;
+}
+.menu-panel ul li {
+    padding: 14px 0;
+    border-bottom: 1px solid #1e2538;
+    font-size: 16px;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.menu-panel ul li.active {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+.menu-panel ul li:hover {
+    color: var(--color-primary);
+}
+
+/* ==========================================
+   TOAST
+   ========================================== */
+.toast-message {
+    position: fixed;
+    bottom: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 7, 18, 0.98);
+    border: 1px solid var(--color-primary);
+    padding: 10px 20px;
+    border-radius: 40px;
+    color: white;
+    font-size: 0.75rem;
+    z-index: 1000;
+    transition: bottom 0.3s ease;
+    white-space: nowrap;
+}
+.toast-message.show {
+    bottom: 30px;
+}
+
+/* ==========================================
+   SEGERA HADIR (Default)
+   ========================================== */
+.segera-hadir {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    gap: 16px;
+}
+.segera-hadir i {
+    font-size: 64px;
+    color: var(--color-primary);
+    opacity: 0.5;
+}
+.segera-hadir h2 {
+    font-size: 24px;
+    font-weight: 300;
+}
+.segera-hadir p {
+    font-size: 14px;
+    opacity: 0.6;
+}
+
+/* ==========================================
+   CRYSTA ICONS
+   ========================================== */
+.crysta-svg-icon {
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+    /* 🔥 HAPUS FILTER AGAR WARNA ASLI KELUAR */
+    /* filter: ...; */
+}
+
+.menu-panel ul li .crysta-svg-icon {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 480px) {
+    .menu-panel {
+        width: 200px;
+        padding: 16px 14px;
+    }
+    .menu-panel ul li {
+        font-size: 14px;
+        padding: 10px 0;
+    }
+    .menu-float {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+        top: 10px;
+        right: 10px;
     }
 }
 
-// ==================== RESET SARAN FORM ====================
-function resetSaranForm() {
-    var msgEl = document.getElementById('saranMessage');
-    if (msgEl) msgEl.value = '';
+/* ==========================================
+   SCROLLBAR
+   ========================================== */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
 }
-
-// ==================== INIT SARAN EVENTS ====================
-function initSaranEvents() {
-    var messageEl = document.getElementById('saranMessage');
-    var sendBtn = document.getElementById('saranSendBtn');
-    var closeBtn = document.getElementById('saranCloseBtn');
-    var toast = document.getElementById('toastMessage');
-
-    function showToastSaran(msg, isError) {
-        isError = isError || false;
-        toast.innerText = msg;
-        toast.style.borderColor = isError ? '#ff4444' : '#a855f7';
-        toast.classList.add('show');
-        setTimeout(function() {
-            toast.classList.remove('show');
-        }, 3000);
-    }
-
-    function sendSaran() {
-        if (isSendingSaran) return;
-
-        var pesan = messageEl.value.trim();
-
-        if (!pesan) {
-            showToastSaran('⚠️ Pesan tidak boleh kosong!', true);
-            messageEl.focus();
-            return;
-        }
-
-        isSendingSaran = true;
-        sendBtn.disabled = true;
-        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MENGIRIM...';
-
-        var kategori = 'Saran';
-        var url = GAS_MAIL_URL + '?uid=' + encodeURIComponent(myUID) + '&ign=Member&msg=' + encodeURIComponent(pesan) + '&category=' + encodeURIComponent(kategori) + '&type=mail';
-
-        fetch(url)
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.status === 'success') {
-                    showToastSaran('✅ Surat berhasil dikirim! Terima kasih.');
-                    setTimeout(function() {
-                        resetSaranForm();
-                        closeSaran();
-                        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
-                        sendBtn.disabled = false;
-                        isSendingSaran = false;
-                    }, 1000);
-                } else {
-                    showToastSaran('⚠️ Gagal: ' + (data.message || 'Sistem error'), true);
-                    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
-                    sendBtn.disabled = false;
-                    isSendingSaran = false;
-                }
-            })
-            .catch(function(e) {
-                showToastSaran('🚨 Koneksi gagal! Coba lagi.', true);
-                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
-                sendBtn.disabled = false;
-                isSendingSaran = false;
-                console.error(e);
-            });
-    }
-
-    if (closeBtn) closeBtn.addEventListener('click', closeSaran);
-    if (sendBtn) sendBtn.addEventListener('click', sendSaran);
-    if (messageEl) {
-        messageEl.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendSaran();
-            }
-        });
-    }
-
-    console.log("✅ Kotak Saran terintegrasi");
+::-webkit-scrollbar-track {
+    background: #10141f;
 }
-
-// ==================== RENDER SEGERA ====================
-function renderSegera() {
-    var mainContent = document.getElementById('mainContent');
-    if (!mainContent) return;
-
-    mainContent.innerHTML = '';
-    mainContent.innerHTML += '<div class="segera-hadir">';
-    mainContent.innerHTML += '  <i class="fas fa-tools"></i>';
-    mainContent.innerHTML += '  <h2>Segera Hadir</h2>';
-    mainContent.innerHTML += '  <p>Fitur ini sedang dalam pengembangan</p>';
-    mainContent.innerHTML += '</div>';
+::-webkit-scrollbar-thumb {
+    background: var(--border-line);
+    border-radius: 4px;
 }
-
-// ==================== EXPOSE ====================
-window.renderSaran = renderSaran;
-window.closeSaran = closeSaran;
-window.resetSaranForm = resetSaranForm;
-window.renderSegera = renderSegera;
+::-webkit-scrollbar-thumb:hover {
+    background: #3a405b;
+}

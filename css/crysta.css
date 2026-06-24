@@ -391,20 +391,19 @@
 
 .crysta-detail-badge {
     font-size: 11px;
-    background: rgba(74, 222, 128, 0.15);
-    color: var(--color-positive);
     padding: 2px 12px;
     border-radius: 12px;
     font-weight: 600;
+    transition: all 0.2s;
 }
 
 .crysta-detail-badge-base {
     font-size: 11px;
-    background: rgba(136, 146, 176, 0.15); 
-    color: var(--text-muted);
     padding: 2px 12px;
     border-radius: 12px;
     font-weight: 600;
+    background: rgba(136, 146, 176, 0.15);
+    color: var(--text-muted);
 }
 
 .crysta-detail-stat {

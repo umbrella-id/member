@@ -36,6 +36,11 @@ function checkEventAvailability() {
 
 // ==================== LOAD EVENT PAGE ====================
 function loadEventPage() {
+    // 🔥 UPDATE lastActiveTab
+    if (window.setLastActiveTab) {
+        window.setLastActiveTab('event');
+    }
+    
     const mainContent = document.getElementById('mainContent');
     if (!mainContent) return;
     

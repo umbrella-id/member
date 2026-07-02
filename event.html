@@ -435,19 +435,24 @@
             listPeserta.innerHTML = html;
         }
 
-        // ===== UPDATE TIM (CLEAN - tanpa status) =====
+        // ===== UPDATE TIM - HANYA TIM YANG PUNYA ANGGOTA =====
         function updateTim(tim) {
-            if (!tim || tim.length === 0) {
+            // Filter tim yang memiliki anggota (array tidak kosong)
+            var timWithMembers = tim.filter(function(t) {
+                return t.anggota && Array.isArray(t.anggota) && t.anggota.length > 0;
+            });
+
+            if (!timWithMembers || timWithMembers.length === 0) {
                 listTim.innerHTML = '<div class="empty-state">Belum ada tim</div>';
                 return;
             }
 
-            var current = JSON.stringify(tim);
+            var current = JSON.stringify(timWithMembers);
             if (current === lastTim) return;
             lastTim = current;
 
             var html = '';
-            tim.forEach(function(t, idx) {
+            timWithMembers.forEach(function(t, idx) {
                 var isAdmin = t.anggota && t.anggota.indexOf('Admin') !== -1;
                 var anggotaText = t.anggota ? t.anggota.join(' & ') : '?';
                 var popClass = (idx < 3) ? ' pop' : '';
@@ -462,13 +467,22 @@
             listTim.innerHTML = html;
         }
 
-        // ===== UPDATE PEMENANG =====
+        // ===== UPDATE PEMENANG - HANYA TIM YANG PUNYA ANGGOTA =====
         function updatePemenang(tim) {
-            if (!tim || tim.length === 0) {
+            // Filter tim yang memiliki anggota
+            var timWithMembers = tim.filter(function(t) {
+                return t.anggota && Array.isArray(t.anggota) && t.anggota.length > 0;
+            });
+
+            if (!timWithMembers || timWithMembers.length === 0) {
                 pemenangContainer.innerHTML = '<div class="empty-state">Belum ada data</div>';
                 return;
             }
-            var valid = tim.filter(function(t) { return t.terbesar !== null && t.terkecil !== null && t.selisih !== null; });
+
+            var valid = timWithMembers.filter(function(t) { 
+                return t.terbesar !== null && t.terkecil !== null && t.selisih !== null; 
+            });
+            
             if (valid.length === 0) {
                 pemenangContainer.innerHTML = '<div class="empty-state">Belum ada data lengkap</div>';
                 return;
@@ -579,7 +593,7 @@
 
         // ===== POLLING (tetap jalan untuk update tim baru) =====
         loadData();
-        setInterval(loadData, 5000); // polling lebih santai (5 detik)
+        setInterval(loadData, 5000);
     </script>
 </body>
 </html>

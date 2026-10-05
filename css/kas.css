@@ -81,7 +81,8 @@
     gap: 12px;
     flex: 1;
     overflow: hidden;
-    padding: 12px;
+    /* 🎯 Padding bawah handle nav bar */
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
 }
 
 .panel {
@@ -114,10 +115,10 @@
 .panel-kas .table-wrap {
     flex: 1;
     overflow: auto;
-    margin: 0 10px 10px;
+    /* 🎯 Margin bawah handle nav bar */
+    margin: 0 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
     border-radius: 8px;
 }
-
 .panel-history .history-search {
     flex-shrink: 0;
     margin: 8px 10px 4px;
@@ -125,7 +126,8 @@
 .panel-history .history-wrap {
     flex: 1;
     overflow: auto;
-    margin: 0 10px 10px;
+    /* 🎯 Margin bawah handle nav bar */
+    margin: 0 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
     border-radius: 8px;
 }
 

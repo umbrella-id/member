@@ -12,6 +12,11 @@
     --text-dim: #4a5270;
     --color-positive: #4ade80;
     --color-negative: #f87171;
+
+    /* 🎯 SAFE AREA (nav bar Android / home indicator iPhone) */
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --padding-bottom-base: 16px;
+    --padding-bottom-total: calc(var(--safe-bottom) + var(--padding-bottom-base));
 }
 
 /* ==========================================
@@ -37,13 +42,15 @@ body {
 }
 
 /* ==========================================
-   MAIN CONTENT
+   MAIN CONTENT — SAFE AREA HANDLING
    ========================================== */
 .main-content {
     flex: 1;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    /* 🎯 Semua konten bisa di-scroll sampai bawah tanpa tertutup nav bar */
+    padding-bottom: var(--padding-bottom-total);
 }
 
 /* ==========================================
@@ -93,6 +100,8 @@ body {
     background: var(--bg-solid-form);
     border-left: 2px solid var(--border-line);
     padding: 30px 20px;
+    /* 🎯 Padding bawah menu panel juga handle nav bar */
+    padding-bottom: calc(30px + var(--safe-bottom));
     transform: translateX(100%);
     transition: transform 0.3s ease;
     z-index: 101;
@@ -129,7 +138,7 @@ body {
 }
 
 /* ==========================================
-   TOAST
+   TOAST — Naikkan posisi biar tidak ketutup nav bar
    ========================================== */
 .toast-message {
     position: fixed;
@@ -147,11 +156,12 @@ body {
     white-space: nowrap;
 }
 .toast-message.show {
-    bottom: 30px;
+    /* 🎯 Toast muncul di atas nav bar */
+    bottom: calc(30px + var(--safe-bottom));
 }
 
 /* ==========================================
-   SEGERA HADIR (Default)
+   SEGERA HADIR
    ========================================== */
 .segera-hadir {
     display: flex;
@@ -183,8 +193,6 @@ body {
     display: inline-block;
     vertical-align: middle;
     flex-shrink: 0;
-    /* 🔥 HAPUS FILTER AGAR WARNA ASLI KELUAR */
-    /* filter: ...; */
 }
 
 .menu-panel ul li .crysta-svg-icon {
@@ -201,6 +209,7 @@ body {
     .menu-panel {
         width: 200px;
         padding: 16px 14px;
+        padding-bottom: calc(16px + var(--safe-bottom));
     }
     .menu-panel ul li {
         font-size: 14px;

@@ -6,7 +6,7 @@ var searchKeyword = '';
 var isRendering = false;
 
 // ==================== KONFIGURASI ====================
-// GAS5 URL & API key diambil dari config.js (UM_CONFIG)
+var CRYSTA_API_URL = 'https://script.google.com/macros/s/AKfycbzTP1-9KuQ2iz4ffTfhujqkSIQqQxXWMXY-BHljCVU_Zzm0Ept8j4AJUCBHqB-ZSZk/exec?action=getCrysta';
 var CRYSTA_CACHE_KEY = 'crysta_data';
 var CRYSTA_CACHE_EXPIRY = 24 * 60 * 60 * 1000;
 
@@ -75,8 +75,7 @@ function loadCrystaData(callback) {
     }
     
     console.log('🌐 Fetching data dari API...');
-    var url = buildGas5Url('getCrysta', {});
-    fetch(url)
+    fetch(CRYSTA_API_URL)
         .then(function(r) {
             console.log('📡 Response status:', r.status);
             if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -251,6 +250,14 @@ function renderCrysta() {
     console.log('📊 isDataLoaded:', isDataLoaded);
     console.log('📊 crystaRawData.length:', crystaRawData.length);
     
+    // 🔥 HAPUS CEK isRendering AGAR BISA RENDER ULANG
+    // if (isRendering) {
+    //     console.log('⏳ Already rendering, skip');
+    //     return;
+    // }
+    // isRendering = true;
+    
+    // UPDATE LAST ACTIVE TAB
     if (window.setLastActiveTab) {
         window.setLastActiveTab('crysta');
     }
@@ -558,6 +565,7 @@ function openCrystaDetail(crystaName) {
         }
     }
     
+    // 🔥 BADGE WARNA SESUAI TIPE
     var badgeText = isBase ? 'Crysta Dasar' : 'Crysta Penguat';
     var badgeClass = isBase ? 'crysta-detail-badge-base' : 'crysta-detail-badge';
     var badgeColor = isBase ? 'var(--text-muted)' : typeInfo.text;
@@ -583,6 +591,7 @@ function openCrystaDetail(crystaName) {
     
     document.body.insertAdjacentHTML('beforeend', popupHTML);
     
+    // SET STATE POPUP TERBUKA UNTUK BACK BUTTON
     if (window.setCrystaPopupOpen) {
         window.setCrystaPopupOpen(true);
     }

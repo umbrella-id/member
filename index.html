@@ -9,61 +9,8 @@
     <link rel="stylesheet" href="css/kas.css" />
     <link rel="stylesheet" href="css/crysta.css" />
     <link rel="stylesheet" href="css/saran.css" />
-    <link rel="stylesheet" href="css/gate.css" />
 </head>
 <body>
-
-    <!-- ===== GATE VERIFIKASI MEMBER ===== -->
-    <div id="internalGate">
-        <div class="gate-box">
-            <div class="gate-icon">
-                <i class="fas fa-shield-alt"></i>
-            </div>
-            <div class="gate-title">Verifikasi Member</div>
-            <div class="gate-subtitle">Masukkan 6 digit terakhir nomor WhatsApp Anda untuk mengakses halaman ini.</div>
-            
-            <!-- FORM NORMAL (6 DIGIT) -->
-            <div id="gateFormNormal">
-                <div class="gate-form-group">
-                    <label><i class="fas fa-key"></i> 6 Digit Terakhir WA</label>
-                    <input type="tel" 
-                           id="gateWaInput" 
-                           class="gate-input" 
-                           placeholder="123456" 
-                           maxlength="6" 
-                           inputmode="numeric"
-                           pattern="[0-9]*"
-                           autocomplete="off">
-                </div>
-                <button id="gateSubmitBtn" class="gate-btn" onclick="submitGate()">
-                    <i class="fas fa-shield-alt"></i> VERIFIKASI
-                </button>
-            </div>
-            
-            <!-- FORM NOMOR LENGKAP (KALAU KEMBAR) -->
-            <div id="gateFormFull" style="display: none;">
-                <div class="gate-form-group">
-                    <label><i class="fas fa-phone"></i> Nomor WA Lengkap</label>
-                    <input type="tel" 
-                           id="gateWaFullInput" 
-                           class="gate-input" 
-                           placeholder="628123456789" 
-                           inputmode="numeric"
-                           pattern="[0-9]*"
-                           autocomplete="off">
-                </div>
-                <button id="gateSubmitFullBtn" class="gate-btn" onclick="submitGateFull()">
-                    <i class="fas fa-shield-alt"></i> VERIFIKASI
-                </button>
-            </div>
-            
-            <div id="gateMessage" class="gate-message"></div>
-            
-            <div class="gate-hint">
-                <i class="fas fa-info-circle"></i> Hanya member aktif Umbrella yang bisa mengakses halaman ini.
-            </div>
-        </div>
-    </div>
 
     <!-- ===== FLOATING MENU ===== -->
     <div class="menu-float" id="menuToggle" aria-label="Menu">
@@ -93,8 +40,6 @@
     <div class="toast-message" id="toastMessage"></div>
 
     <!-- ===== JAVASCRIPT ===== -->
-    <script src="js/config.js"></script>
-    <script src="js/gate.js"></script>
     <script src="js/crysta-icons.js"></script> 
     <script src="js/app.js"></script>
     <script src="js/event.js"></script>

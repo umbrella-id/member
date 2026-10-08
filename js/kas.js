@@ -1,10 +1,34 @@
 // ==================== KONFIGURASI ====================
 const BASE_URL = 'https://script.google.com/macros/s/AKfycbzTP1-9KuQ2iz4ffTfhujqkSIQqQxXWMXY-BHljCVU_Zzm0Ept8j4AJUCBHqB-ZSZk/exec';
+const GAS5_API_KEY = 'umbrella_2026_x7k9mPqR3nL8vW2yH5tZ4bC1dF6gJ0a';
 const CACHE_KEY = 'kas_data';
 const CACHE_KEY_HISTORY = 'kas_history';
 const CACHE_EXPIRY = 24 * 60 * 60 * 1000;
 const START_YEAR = 2025;
 const START_MONTH = 6;
+
+// ==========================================
+// HELPER: Bangun URL dengan API key + UID
+// ==========================================
+function buildKasUrl(action, params) {
+  const uid = localStorage.getItem('u_uid') || '';
+  
+  let url = `${BASE_URL}?action=${action}&key=${encodeURIComponent(GAS5_API_KEY)}`;
+  
+  if (uid) {
+    url += `&uid=${encodeURIComponent(uid)}`;
+  }
+  
+  if (params) {
+    for (const key in params) {
+      if (params.hasOwnProperty(key)) {
+        url += `&${key}=${encodeURIComponent(params[key])}`;
+      }
+    }
+  }
+  
+  return url;
+}
 
 // ==================== STATE ====================
 let currentTahun = new Date().getFullYear();
@@ -386,7 +410,7 @@ function loadData() {
     // 🔥 LOAD AWAL: SELALU FETCH UNTUK UPDATE CACHE
     if (!isFetching) {
         isFetching = true;
-        const url = BASE_URL + '?action=getMonthlyTable&tahun=' + currentTahun + '&bulan=' + currentBulan;
+        const url = buildKasUrl('getMonthlyTable', { tahun: currentTahun, bulan: currentBulan });
         fetch(url)
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
@@ -432,7 +456,7 @@ function loadDataNavigation() {
     console.log('⏳ NAVIGASI: Tidak ada cache untuk ' + key + ', fetch dari server');
     showSkeleton(30);
     
-    const url = BASE_URL + '?action=getMonthlyTable&tahun=' + currentTahun + '&bulan=' + currentBulan;
+    const url = buildKasUrl('getMonthlyTable', { tahun: currentTahun, bulan: currentBulan });
     fetch(url)
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
@@ -478,7 +502,7 @@ function loadHistory() {
         historyRendered = false;
     }
 
-    fetch(BASE_URL + '?action=getHistory&limit=100')
+    fetch(buildKasUrl('getHistory', { limit: 100 }))
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
             if (data.success && data.data && data.data.length > 0) {
@@ -907,7 +931,7 @@ function preloadPrevMonth() {
         const prev = availableMonths[idx - 1];
         const key = prev.tahun + '-' + prev.bulan;
         if (!getCache(key)) {
-            const url = BASE_URL + '?action=getMonthlyTable&tahun=' + prev.tahun + '&bulan=' + prev.bulan;
+            const url = buildKasUrl('getMonthlyTable', { tahun: prev.tahun, bulan: prev.bulan });
             fetch(url).then(r => r.json()).then(data => {
                 if (data.success) setCache(key, data);
             }).catch(() => {});

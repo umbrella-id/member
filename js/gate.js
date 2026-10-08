@@ -9,13 +9,9 @@
  * 5. User input 6 digit WA → fetch GAS 5 (checkMember)
  * 6. Sukses → simpan identity + masuk
  * 7. Gagal → tampilkan error
+ * 
+ * DEPENDENSI: config.js (UM_CONFIG, buildGas5Url)
  */
-
-// ==========================================
-// KONFIG
-// ==========================================
-const GAS5_URL = 'https://script.google.com/macros/s/AKfycbzTP1-9KuQ2iz4ffTfhujqkSIQqQxXWMXY-BHljCVU_Zzm0Ept8j4AJUCBHqB-ZSZk/exec';
-const GAS5_API_KEY = 'umbrella_2026_x7k9mPqR3nL8vW2yH5tZ4bC1dF6gJ0a';
 
 // ==========================================
 // CEK STATUS GATE SAAT LOAD
@@ -34,7 +30,7 @@ async function checkGateStatus() {
   console.log('🔍 Verifikasi UID member:', uidMember);
   
   try {
-    const url = `${GAS5_URL}?action=checkMemberById&uid=${encodeURIComponent(uidMember)}&key=${encodeURIComponent(GAS5_API_KEY)}`;
+    const url = buildGas5Url('checkMemberById', { uid: uidMember });
     const res = await fetch(url);
     const data = await res.json();
     
@@ -119,7 +115,8 @@ async function submitGate() {
   console.log('📡 Verifikasi 6 digit:', wa6);
   
   try {
-    const url = `${GAS5_URL}?action=checkMember&wa6=${encodeURIComponent(wa6)}`;
+    // checkMember = pintu masuk, TIDAK perlu API key
+    const url = `${UM_CONFIG.GAS5_URL}?action=checkMember&wa6=${encodeURIComponent(wa6)}`;
     const res = await fetch(url);
     const data = await res.json();
     
@@ -182,7 +179,8 @@ async function submitGateFull() {
   console.log('📡 Verifikasi nomor lengkap:', wa);
   
   try {
-    const url = `${GAS5_URL}?action=verifyMemberFull&wa=${encodeURIComponent(wa)}`;
+    // verifyMemberFull = pintu masuk, TIDAK perlu API key
+    const url = `${UM_CONFIG.GAS5_URL}?action=verifyMemberFull&wa=${encodeURIComponent(wa)}`;
     const res = await fetch(url);
     const data = await res.json();
     

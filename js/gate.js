@@ -1,60 +1,31 @@
 /**
- * gate.js — Gate Verifikasi Member (6 Digit WA)
+ * gate.js — Gate Verifikasi Member (Fase 1)
  * 
- * Alur:
- * 1. Cek `umbrella_uid_member` di localStorage
- * 2. Kalau ada → verifikasi ke GAS 5 (checkMemberById)
- * 3. Kalau valid → langsung masuk
- * 4. Kalau tidak ada / tidak valid → tampilkan gate
- * 5. User input 6 digit WA → fetch GAS 5 (checkMember)
- * 6. Sukses → simpan identity + masuk
- * 7. Gagal → tampilkan error
+ * Tujuan:
+ * - Verifikasi member via 6 digit WA.
+ * - Set u_class = 'member' (HANYA INI).
+ * - Tidak ubah u_uid / u_ign / apapun.
  * 
- * DEPENDENSI: config.js (UM_CONFIG, buildGas5Url)
+ * DEPENDENSI: config.js (UM_CONFIG)
  */
 
 // ==========================================
 // CEK STATUS GATE SAAT LOAD
 // ==========================================
-async function checkGateStatus() {
-  const uidMember = localStorage.getItem('umbrella_uid_member');
+function checkGateStatus() {
+  const uClass = localStorage.getItem('u_class');
   
-  // 1. Tidak ada kunci → tampilkan gate
-  if (!uidMember) {
-    console.log('🔒 Tidak ada umbrella_uid_member → tampilkan gate');
+  // 1. Guest (belum pernah gate) → tampilkan gate
+  if (uClass !== 'member') {
+    console.log('🔒 Belum member → tampilkan gate');
     showGate();
     return false;
   }
   
-  // 2. Ada kunci → verifikasi ke GAS 5
-  console.log('🔍 Verifikasi UID member:', uidMember);
-  
-  try {
-    const url = buildGas5Url('checkMemberById', { uid: uidMember });
-    const res = await fetch(url);
-    const data = await res.json();
-    
-    console.log('📡 GAS 5 response:', data);
-    
-    if (data.success && data.valid) {
-      // Valid → masuk
-      console.log('✅ Member valid → masuk');
-      hideGate();
-      return true;
-    } else {
-      // Tidak valid → hapus kunci, tampilkan gate
-      console.log('❌ Member tidak valid → hapus kunci, tampilkan gate');
-      localStorage.removeItem('umbrella_uid_member');
-      localStorage.removeItem('u_class');
-      showGate();
-      return false;
-    }
-  } catch (e) {
-    console.error('❌ Error cek gate:', e);
-    // Koneksi gagal → tetap tampilkan gate (aman)
-    showGate();
-    return false;
-  }
+  // 2. Sudah member → langsung masuk
+  console.log('✅ Sudah member → masuk');
+  hideGate();
+  return true;
 }
 
 // ==========================================
@@ -82,7 +53,7 @@ function hideGate() {
   if (mainContent) mainContent.style.display = 'flex';
   if (menuFloat) menuFloat.style.display = 'flex';
   
-  // Trigger app init setelah gate terbuka
+  // Build menu setelah gate terbuka
   if (typeof buildMenu === 'function') {
     console.log('🎨 Build menu setelah gate terbuka');
     buildMenu();
@@ -123,13 +94,14 @@ async function submitGate() {
     console.log('📡 Response:', data);
     
     if (data.success) {
-      // Sukses → simpan identity
-      saveMemberIdentity(data.uid, data.ign);
+      // Sukses → set u_class = 'member'
+      localStorage.setItem('u_class', 'member');
+      console.log('✅ u_class = member tersimpan');
+      
       showGateMessage('✅ Verifikasi berhasil!', false, true);
       
       setTimeout(() => {
         hideGate();
-        // Load halaman pertama
         if (typeof navigateToPage === 'function') {
           navigateToPage('laporan');
         }
@@ -187,7 +159,9 @@ async function submitGateFull() {
     console.log('📡 Response:', data);
     
     if (data.success) {
-      saveMemberIdentity(data.uid, data.ign);
+      localStorage.setItem('u_class', 'member');
+      console.log('✅ u_class = member tersimpan');
+      
       showGateMessage('✅ Verifikasi berhasil!', false, true);
       
       setTimeout(() => {
@@ -209,19 +183,6 @@ async function submitGateFull() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
   }
-}
-
-// ==========================================
-// SIMPAN IDENTITY MEMBER
-// ==========================================
-function saveMemberIdentity(uid, ign) {
-  localStorage.setItem('u_uid', uid);
-  localStorage.setItem('u_ign', ign);
-  localStorage.setItem('u_class', 'member');
-  localStorage.setItem('umbrella_uid_member', uid);
-  localStorage.setItem('umbrella_verified_at', Date.now().toString());
-  
-  console.log('✅ Member identity tersimpan:', uid, ign);
 }
 
 // ==========================================
@@ -254,9 +215,9 @@ function showGateMessage(msg, isError = false, isSuccess = false) {
 // ==========================================
 // INIT SAAT LOAD
 // ==========================================
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
   console.log('🚪 Gate check dimulai...');
-  await checkGateStatus();
+  checkGateStatus();
 });
 
 // ==========================================

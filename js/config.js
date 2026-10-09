@@ -2,7 +2,6 @@
  * config.js — Konfigurasi Global Web Internal
  * 
  * Di-load PERTAMA sebelum file JS lain.
- * Menyimpan URL & API key yang dipakai oleh gate, kas, crysta, dll.
  */
 
 const UM_CONFIG = {

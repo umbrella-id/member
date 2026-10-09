@@ -40,11 +40,6 @@ async function checkGateStatus() {
       console.log('✅ Tipe member → masuk');
       hideGate();
       return true;
-    } else if (data.success && data.type === 'admin') {
-      // Admin (login web admin) → juga bisa akses web internal
-      console.log('✅ Tipe admin → masuk');
-      hideGate();
-      return true;
     } else {
       // Guest / UID tidak valid → tampilkan gate
       console.log('🔒 Tipe guest → tampilkan gate');

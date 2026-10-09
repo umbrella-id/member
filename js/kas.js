@@ -1,10 +1,13 @@
 // ==================== KONFIGURASI ====================
-const BASE_URL = 'https://script.google.com/macros/s/AKfycbzTP1-9KuQ2iz4ffTfhujqkSIQqQxXWMXY-BHljCVU_Zzm0Ept8j4AJUCBHqB-ZSZk/exec';
+// URL & API key dari config.js (UM_CONFIG)
 const CACHE_KEY = 'kas_data';
 const CACHE_KEY_HISTORY = 'kas_history';
 const CACHE_EXPIRY = 24 * 60 * 60 * 1000;
 const START_YEAR = 2025;
 const START_MONTH = 6;
+
+// Alias: buildKasUrl = buildGas5Url (dari config.js)
+const buildKasUrl = buildGas5Url;
 
 // ==================== STATE ====================
 let currentTahun = new Date().getFullYear();
@@ -386,7 +389,7 @@ function loadData() {
     // 🔥 LOAD AWAL: SELALU FETCH UNTUK UPDATE CACHE
     if (!isFetching) {
         isFetching = true;
-        const url = BASE_URL + '?action=getMonthlyTable&tahun=' + currentTahun + '&bulan=' + currentBulan;
+        const url = buildKasUrl('getMonthlyTable', { tahun: currentTahun, bulan: currentBulan });
         fetch(url)
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
@@ -411,7 +414,7 @@ function loadData() {
     }
 }
 
-// ==================== LOAD DATA NAVIGASI (CACHE FIRST, FETCH ONLY IF NO CACHE) ====================
+// ==================== LOAD DATA NAVIGASI ====================
 function loadDataNavigation() {
     const key = currentTahun + '-' + currentBulan;
     const cached = getCache(key);
@@ -424,15 +427,13 @@ function loadDataNavigation() {
         updateNavButtons();
         hideSkeleton();
         isNavigating = false;
-        // TIDAK FETCH - karena navigasi hanya pakai cache
         return;
     }
 
-    // Jika tidak ada cache, fetch data
     console.log('⏳ NAVIGASI: Tidak ada cache untuk ' + key + ', fetch dari server');
     showSkeleton(30);
     
-    const url = BASE_URL + '?action=getMonthlyTable&tahun=' + currentTahun + '&bulan=' + currentBulan;
+    const url = buildKasUrl('getMonthlyTable', { tahun: currentTahun, bulan: currentBulan });
     fetch(url)
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
@@ -478,7 +479,7 @@ function loadHistory() {
         historyRendered = false;
     }
 
-    fetch(BASE_URL + '?action=getHistory&limit=100')
+    fetch(buildKasUrl('getHistory', { limit: 100 }))
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
             if (data.success && data.data && data.data.length > 0) {
@@ -597,7 +598,6 @@ function initPopup() {
     function closePopup() {
         if (popupOverlay) popupOverlay.classList.remove('active');
         
-        // 🔥 SET STATE POPUP TERTUTUP
         if (window.setDetailPopupOpen) {
             window.setDetailPopupOpen(false);
         }
@@ -632,7 +632,6 @@ function initPopup() {
 
         if (popupOverlay) popupOverlay.classList.add('active');
         
-        // 🔥 SET STATE POPUP TERBUKA
         if (window.setDetailPopupOpen) {
             window.setDetailPopupOpen(true);
         }
@@ -647,14 +646,6 @@ function initPopup() {
             if (e.target === this) closePopup();
         });
     }
-
-    // ❌ HAPUS INI - pindah ke app.js
-    // window.addEventListener('popstate', function(e) {
-    //     if (popupOverlay && popupOverlay.classList.contains('active')) {
-    //         closePopup();
-    //         e.preventDefault();
-    //     }
-    // });
 
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && popupOverlay && popupOverlay.classList.contains('active')) {
@@ -739,7 +730,6 @@ function initKasEvents() {
         });
     }
 
-    // Tab selector
     document.querySelectorAll('.tab-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.tab-btn').forEach(function(b) {
@@ -785,7 +775,6 @@ function initKasEvents() {
         });
     });
 
-    // Window resize
     window.addEventListener('resize', function() {
         const isWide = window.innerWidth >= 900;
         const tabSelector = document.getElementById('tabSelector');
@@ -828,7 +817,6 @@ function initKasEvents() {
         }
     });
 
-    // 🔥 NAVIGASI BULAN - LOGIKA BARU
     if (prevBtn) {
         prevBtn.addEventListener('click', function() {
             if (isNavigating) return;
@@ -845,7 +833,6 @@ function initKasEvents() {
                 currentTahun = availableMonths[idx - 1].tahun;
                 currentBulan = availableMonths[idx - 1].bulan;
                 if (monthLabel) monthLabel.textContent = availableMonths[idx - 1].label;
-                // 🔥 PAKAI loadDataNavigation - TIDAK FETCH JIKA ADA CACHE
                 loadDataNavigation();
             } else {
                 isNavigating = false;
@@ -869,7 +856,6 @@ function initKasEvents() {
                 currentTahun = availableMonths[idx + 1].tahun;
                 currentBulan = availableMonths[idx + 1].bulan;
                 if (monthLabel) monthLabel.textContent = availableMonths[idx + 1].label;
-                // 🔥 PAKAI loadDataNavigation - TIDAK FETCH JIKA ADA CACHE
                 loadDataNavigation();
             } else {
                 isNavigating = false;
@@ -907,7 +893,7 @@ function preloadPrevMonth() {
         const prev = availableMonths[idx - 1];
         const key = prev.tahun + '-' + prev.bulan;
         if (!getCache(key)) {
-            const url = BASE_URL + '?action=getMonthlyTable&tahun=' + prev.tahun + '&bulan=' + prev.bulan;
+            const url = buildKasUrl('getMonthlyTable', { tahun: prev.tahun, bulan: prev.bulan });
             fetch(url).then(r => r.json()).then(data => {
                 if (data.success) setCache(key, data);
             }).catch(() => {});

@@ -1,10 +1,13 @@
 /**
  * gate.js — Gate Verifikasi Member (Fase 1)
  * 
- * Tujuan:
- * - Verifikasi member via 6 digit WA.
- * - Set u_class = 'member' (HANYA INI).
- * - Tidak ubah u_uid / u_ign / apapun.
+ * Alur:
+ * 1. Cek `u_uid` di localStorage.
+ * 2. Kalau ada → fetch GAS 5 checkUidType → tahu tipenya.
+ * 3. Kalau member → langsung masuk.
+ * 4. Kalau bukan → tampilkan gate.
+ * 5. Gate input 6 digit WA → GAS 5 checkMember → return UID M-xxx.
+ * 6. Simpan UID + set class member.
  * 
  * DEPENDENSI: config.js (UM_CONFIG)
  */
@@ -12,20 +15,48 @@
 // ==========================================
 // CEK STATUS GATE SAAT LOAD
 // ==========================================
-function checkGateStatus() {
-  const uClass = localStorage.getItem('u_class');
+async function checkGateStatus() {
+  const uUid = localStorage.getItem('u_uid') || '';
   
-  // 1. Guest (belum pernah gate) → tampilkan gate
-  if (uClass !== 'member') {
-    console.log('🔒 Belum member → tampilkan gate');
+  // 1. Tidak ada UID → tampilkan gate
+  if (!uUid) {
+    console.log('🔒 Tidak ada UID → tampilkan gate');
     showGate();
     return false;
   }
   
-  // 2. Sudah member → langsung masuk
-  console.log('✅ Sudah member → masuk');
-  hideGate();
-  return true;
+  // 2. Ada UID → cek tipe ke GAS 5
+  console.log('🔍 Cek tipe UID:', uUid);
+  
+  try {
+    const url = buildGas5Url('checkUidType', { uid: uUid });
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    console.log('📡 GAS 5 response:', data);
+    
+    if (data.success && data.type === 'member') {
+      // Member → langsung masuk
+      console.log('✅ Tipe member → masuk');
+      hideGate();
+      return true;
+    } else if (data.success && data.type === 'admin') {
+      // Admin (login web admin) → juga bisa akses web internal
+      console.log('✅ Tipe admin → masuk');
+      hideGate();
+      return true;
+    } else {
+      // Guest / UID tidak valid → tampilkan gate
+      console.log('🔒 Tipe guest → tampilkan gate');
+      showGate();
+      return false;
+    }
+  } catch (e) {
+    console.error('❌ Error cek tipe UID:', e);
+    // Koneksi gagal → aman: tampilkan gate
+    showGate();
+    return false;
+  }
 }
 
 // ==========================================
@@ -94,10 +125,8 @@ async function submitGate() {
     console.log('📡 Response:', data);
     
     if (data.success) {
-      // Sukses → set u_class = 'member'
-      localStorage.setItem('u_class', 'member');
-      console.log('✅ u_class = member tersimpan');
-      
+      // Sukses → simpan UID member
+      saveMemberIdentity(data.uid);
       showGateMessage('✅ Verifikasi berhasil!', false, true);
       
       setTimeout(() => {
@@ -159,9 +188,7 @@ async function submitGateFull() {
     console.log('📡 Response:', data);
     
     if (data.success) {
-      localStorage.setItem('u_class', 'member');
-      console.log('✅ u_class = member tersimpan');
-      
+      saveMemberIdentity(data.uid);
       showGateMessage('✅ Verifikasi berhasil!', false, true);
       
       setTimeout(() => {
@@ -183,6 +210,33 @@ async function submitGateFull() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
   }
+}
+
+// ==========================================
+// SIMPAN IDENTITY MEMBER
+// ==========================================
+function saveMemberIdentity(uid) {
+  // Update UID ke M-xxx dari GAS
+  localStorage.setItem('u_uid', uid);
+  localStorage.setItem('u_class', 'member');
+  
+  // Update window.myUID (untuk sesi ini)
+  if (typeof window !== 'undefined') {
+    window.myUID = uid;
+  }
+  
+  // IGN: kalau belum ada, set random
+  const existingIgn = localStorage.getItem('u_ign');
+  if (!existingIgn || existingIgn.trim() === '') {
+    const randomIgn = 'Member-' + Math.random().toString(36).substring(2, 6);
+    localStorage.setItem('u_ign', randomIgn);
+    if (typeof window !== 'undefined') {
+      window.myIGN = randomIgn;
+    }
+    console.log('✅ IGN random:', randomIgn);
+  }
+  
+  console.log('✅ Member identity tersimpan:', uid);
 }
 
 // ==========================================

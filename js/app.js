@@ -211,10 +211,9 @@ window.navigateToPage = navigateToPage;
 window.buildMenu = buildMenu;
 
 // ==================== INIT ====================
+// buildMenu() dipanggil oleh gate.js setelah verifikasi sukses
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 APP STARTED');
-    buildMenu();
-    console.log('✅ APP initialized');
+    console.log('🚀 APP READY — menunggu verifikasi gate');
 });
 
 // ==================== SPIN ANIMATION ====================

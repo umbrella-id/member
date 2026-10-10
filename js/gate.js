@@ -15,6 +15,9 @@
 // ==========================================
 // CEK STATUS GATE SAAT LOAD
 // ==========================================
+// ==========================================
+// CEK STATUS GATE SAAT LOAD + VERIFIKASI BACKGROUND
+// ==========================================
 async function checkGateStatus() {
   const uUid = localStorage.getItem('u_uid') || '';
   
@@ -25,7 +28,7 @@ async function checkGateStatus() {
     return false;
   }
   
-  // 2. Ada UID → cek tipe ke GAS 5
+  // 2. Cek tipe ke GAS 5 (sekaligus validasi)
   console.log('🔍 Cek tipe UID:', uUid);
   
   try {
@@ -35,24 +38,80 @@ async function checkGateStatus() {
     
     console.log('📡 GAS 5 response:', data);
     
-    if (data.success && data.type === 'member') {
-      // Member → langsung masuk
-      console.log('✅ Tipe member → masuk');
+    if (data.success && data.type === 'member' && data.valid === true) {
+      // Member aktif → langsung masuk
+      console.log('✅ Tipe member valid → masuk');
       hideGate();
       return true;
     } else {
-      // Guest / UID tidak valid → tampilkan gate
-      console.log('🔒 Tipe guest → tampilkan gate');
+      // Guest / UID tidak valid / member nonaktif → hapus UID & tampilkan gate
+      console.log('🔒 Tidak valid → hapus UID & tampilkan gate');
+      localStorage.removeItem('u_uid');
       showGate();
       return false;
     }
   } catch (e) {
     console.error('❌ Error cek tipe UID:', e);
-    // Koneksi gagal → aman: tampilkan gate
+    // 🔓 FAIL OPEN: kalau error koneksi, cek dulu apakah UID ada
+    // Kalau ada → biarkan akses (jangan ganggu user karena server error)
+    // Kalau tidak ada → tampilkan gate
+    if (uUid) {
+      console.log('⚠️ Koneksi error, fail open — pakai UID existing');
+      hideGate();
+      return true;
+    }
     showGate();
     return false;
   }
 }
+
+// ==========================================
+// VERIFIKASI BACKGROUND (Tiap 5 Menit + Balik Tab)
+// ==========================================
+async function verifyMemberBackground() {
+  const uUid = localStorage.getItem('u_uid') || '';
+  if (!uUid) return;
+  
+  // Throttle 5 menit
+  const lastCheck = parseInt(localStorage.getItem('u_last_verify') || '0');
+  if (Date.now() - lastCheck < 5 * 60 * 1000) {
+    console.log('⏭️ Skip verifikasi (baru < 5 menit)');
+    return;
+  }
+  
+  try {
+    const url = buildGas5Url('checkUidType', { uid: uUid });
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    localStorage.setItem('u_last_verify', Date.now().toString());
+    
+    if (data.success && data.type === 'member' && data.valid === true) {
+      console.log('✅ Verifikasi background: masih valid');
+    } else {
+      console.log('🔴 Verifikasi background: tidak valid — logout');
+      localStorage.removeItem('u_uid');
+      localStorage.removeItem('u_last_verify');
+      showGate();
+      // Reload biar bersih
+      setTimeout(() => location.reload(), 1500);
+    }
+  } catch(e) {
+    console.log('⚠️ Verifikasi background error (fail open):', e);
+  }
+}
+
+// Panggil saat balik ke tab
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    verifyMemberBackground();
+  }
+});
+
+// Panggil saat window focus (PC)
+window.addEventListener('focus', () => {
+  verifyMemberBackground();
+});
 
 // ==========================================
 // TAMPILKAN GATE

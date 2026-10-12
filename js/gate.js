@@ -279,18 +279,14 @@ function saveMemberIdentity(uid) {
     window.myUID = uid;
   }
   
-  // IGN: kalau belum ada, set random
-  const existingIgn = localStorage.getItem('u_ign');
-  if (!existingIgn || existingIgn.trim() === '') {
-    const randomIgn = 'Member-' + Math.random().toString(36).substring(2, 6);
-    localStorage.setItem('u_ign', randomIgn);
-    if (typeof window !== 'undefined') {
-      window.myIGN = randomIgn;
-    }
-    console.log('✅ IGN random:', randomIgn);
+  // 🎯 IGN KOSONGKAN — user isi manual di web publik
+  localStorage.setItem('u_ign', '');
+  if (typeof window !== 'undefined') {
+    window.myIGN = '';
   }
   
   console.log('✅ Member identity tersimpan:', uid);
+  console.log('ℹ️ IGN kosong — user isi di web publik');
 }
 
 // ==========================================

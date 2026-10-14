@@ -83,6 +83,24 @@ function loadCrystaData(callback) {
         })
         .then(function(data) {
             console.log('📦 Data dari server:', data);
+            
+            // 🆕 Handle error Unauthorized
+            if (data.error && data.error.indexOf('Unauthorized') !== -1) {
+                console.warn('🔒 CRYSTA: Unauthorized — UID invalid');
+                if (!cached || cached.length === 0) {
+                    crystaRawData = [];
+                    isDataLoaded = true;
+                    var mc = document.getElementById('mainContent');
+                    if (mc) {
+                        mc.innerHTML = '<div class="crysta-empty"><i class="fas fa-lock"></i><p>🔒 Sesi tidak valid. Silakan verifikasi ulang.</p></div>';
+                    }
+                    setTimeout(function() {
+                        if (typeof checkGateStatus === 'function') checkGateStatus();
+                    }, 2000);
+                }
+                return;
+            }
+            
             if (data.success && data.data && data.data.length > 0) {
                 console.log('🔄 CRYSTA: Update server, jumlah:', data.data.length);
                 crystaRawData = data.data;

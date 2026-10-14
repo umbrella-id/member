@@ -31,12 +31,25 @@ async function checkGateStatus() {
   // 2. Cek tipe ke GAS 5 (sekaligus validasi)
   console.log('🔍 Cek tipe UID:', uUid);
   
+  // 🕐 Timeout 10 detik biar tidak stuck
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  
   try {
     const url = buildGas5Url('checkUidType', { uid: uUid });
-    const res = await fetch(url);
-    const data = await res.json();
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     
+    const data = await res.json();
     console.log('📡 GAS 5 response:', data);
+    
+    // 🆕 Kalau GAS5 return error Unauthorized (UID tidak valid)
+    if (data.error && data.error.indexOf('Unauthorized') !== -1) {
+      console.log('🔒 UID ditolak server → hapus & tampilkan gate');
+      localStorage.removeItem('u_uid');
+      showGate();
+      return false;
+    }
     
     if (data.success && data.type === 'member' && data.valid === true) {
       // Member aktif → langsung masuk
@@ -51,6 +64,17 @@ async function checkGateStatus() {
       return false;
     }
   } catch (e) {
+    clearTimeout(timeoutId);
+    
+    // Kalau timeout / abort
+    if (e.name === 'AbortError') {
+      console.warn('⏰ Timeout cek UID (10s) — fail open');
+      if (uUid) {
+        hideGate();
+        return true;
+      }
+    }
+    
     console.error('❌ Error cek tipe UID:', e);
     // 🔓 FAIL OPEN: kalau error koneksi, cek dulu apakah UID ada
     // Kalau ada → biarkan akses (jangan ganggu user karena server error)

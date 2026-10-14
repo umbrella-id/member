@@ -393,6 +393,16 @@ function loadData() {
         fetch(url)
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
+                // 🆕 Handle error Unauthorized
+                if (data.error && data.error.indexOf('Unauthorized') !== -1) {
+                    console.warn('🔒 Unauthorized — UID invalid, gate akan muncul');
+                    if (!cached) showError('Sesi Anda tidak valid. Silakan verifikasi ulang.');
+                    isFetching = false;
+                    // Auto refresh gate setelah 2 detik
+                    setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
+                    return;
+                }
+                
                 if (data.success) {
                     setCache(key, data);
                     console.log('🔄 DATA KAS: Update dari server untuk ' + key);
@@ -406,11 +416,6 @@ function loadData() {
                 }
                 isFetching = false;
             })
-            .catch(e => {
-                console.error('❌ DATA KAS: Error fetch:', e);
-                if (!cached) showError('Error: ' + e.message);
-                isFetching = false;
-            });
     }
 }
 
@@ -437,6 +442,15 @@ function loadDataNavigation() {
     fetch(url)
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
+            // 🆕 Handle error Unauthorized
+            if (data.error && data.error.indexOf('Unauthorized') !== -1) {
+                console.warn('🔒 Unauthorized — UID invalid');
+                showError('Sesi Anda tidak valid. Silakan verifikasi ulang.');
+                isNavigating = false;
+                setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
+                return;
+            }
+            
             if (data.success) {
                 setCache(key, data);
                 console.log('🔄 NAVIGASI: Data dari server untuk ' + key);
@@ -450,11 +464,6 @@ function loadDataNavigation() {
             }
             isNavigating = false;
         })
-        .catch(e => {
-            console.error('❌ NAVIGASI: Error fetch:', e);
-            showError('Error: ' + e.message);
-            isNavigating = false;
-        });
 }
 
 // ==================== HISTORY ====================
@@ -482,6 +491,20 @@ function loadHistory() {
     fetch(buildKasUrl('getHistory', { limit: 100 }))
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
+            // 🆕 Handle error Unauthorized
+            if (data.error && data.error.indexOf('Unauthorized') !== -1) {
+                console.warn('🔒 Unauthorized — UID invalid (history)');
+                if (loadingHistory) loadingHistory.style.display = 'none';
+                if (historyBody) {
+                    historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f44336;">🔒 Sesi tidak valid. Verifikasi ulang.</td></tr>';
+                }
+                if (historyContainer) historyContainer.style.display = 'block';
+                historyRendered = true;
+                isFetchingHistory = false;
+                setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
+                return;
+            }
+            
             if (data.success && data.data && data.data.length > 0) {
                 console.log('🔄 HISTORY: Update dari server, jumlah:', data.data.length);
                 allHistoryData = data.data;
@@ -502,19 +525,6 @@ function loadHistory() {
             }
             isFetchingHistory = false;
         })
-        .catch(err => {
-            console.warn('⚠️ HISTORY: Gagal fetch, pakai cache jika ada', err);
-            if (!cachedHistory || cachedHistory.length === 0) {
-                if (loadingHistory) loadingHistory.style.display = 'none';
-                if (historyBody) {
-                    historyBody.innerHTML =
-                        '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f44336;">❌ Gagal memuat history</td></tr>';
-                }
-                if (historyContainer) historyContainer.style.display = 'block';
-                historyRendered = true;
-            }
-            isFetchingHistory = false;
-        });
 }
 
 // ==================== RENDER HISTORY ====================

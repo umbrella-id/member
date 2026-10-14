@@ -6,9 +6,17 @@ var searchKeyword = '';
 var isRendering = false;
 
 // ==================== KONFIGURASI ====================
-var CRYSTA_API_URL = 'https://script.google.com/macros/s/AKfycbzTP1-9KuQ2iz4ffTfhujqkSIQqQxXWMXY-BHljCVU_Zzm0Ept8j4AJUCBHqB-ZSZk/exec?action=getCrysta&key=umbrella_2026_x7k9mPqR3nL8vW2yH5tZ4bC1dF6gJ0a';
 var CRYSTA_CACHE_KEY = 'crysta_data';
 var CRYSTA_CACHE_EXPIRY = 24 * 60 * 60 * 1000;
+
+// Helper: bangun URL GAS5 fresh (UID dari localStorage)
+function getCrystaUrl() {
+    if (typeof buildGas5Url === 'function') {
+        return buildGas5Url('getCrysta', {});
+    }
+    var uid = localStorage.getItem('u_uid') || '';
+    return 'https://script.google.com/macros/s/AKfycbzTP1-9KuQ2iz4ffTfhujqkSIQqQxXWMXY-BHljCVU_Zzm0Ept8j4AJUCBHqB-ZSZk/exec?action=getCrysta&uid=' + encodeURIComponent(uid);
+}
 
 // ==================== TIPE WARNA & LABEL ====================
 var TYPE_COLORS = {
@@ -75,7 +83,7 @@ function loadCrystaData(callback) {
     }
     
     console.log('🌐 Fetching data dari API...');
-    fetch(CRYSTA_API_URL)
+    fetch(getCrystaUrl())
         .then(function(r) {
             console.log('📡 Response status:', r.status);
             if (!r.ok) throw new Error('HTTP ' + r.status);

@@ -172,6 +172,9 @@ function hideGate() {
 // ==========================================
 // SUBMIT 6 DIGIT WA
 // ==========================================
+// ==========================================
+// 🚨 DARURAT: Submit Gate via Nama Leader (FLAT)
+// ==========================================
 async function submitGate() {
   const input = document.getElementById('gateWaInput');
   const messageEl = document.getElementById('gateMessage');
@@ -179,59 +182,53 @@ async function submitGate() {
   
   if (!input || !messageEl || !btn) return;
   
-  const wa6 = input.value.trim();
+  const leaderName = input.value.trim();
   
-  // Validasi
-  if (!wa6 || wa6.length !== 6 || !/^\d{6}$/.test(wa6)) {
-    showGateMessage('Masukkan 6 digit terakhir nomor WA', true);
+  // 🚨 DARURAT: Nama leader flat
+  const LEADER_NAME = "Veer'";
+  
+  // Validasi kosong
+  if (!leaderName) {
+    showGateMessage('Masukkan nama leader', true);
     return;
   }
   
-  // Disable button
+  // Cek nama leader (case-insensitive)
+  if (leaderName.toLowerCase() !== LEADER_NAME.toLowerCase()) {
+    showGateMessage('Nama leader salah', true);
+    return;
+  }
+  
+  // ✅ Nama cocok → langsung masuk (tanpa GAS)
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMVERIFIKASI...';
   showGateMessage('');
   
-  console.log('📡 Verifikasi 6 digit:', wa6);
+  // Generate UID session darurat (M-xxx, format sama seperti GAS)
+  const emergencyUid = 'M-' + generateRandomString(9);
   
-  try {
-    // checkMember = pintu masuk, TIDAK perlu API key
-    const url = `${UM_CONFIG.GAS5_URL}?action=checkMember&wa6=${encodeURIComponent(wa6)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    
-    console.log('📡 Response:', data);
-    
-    if (data.success) {
-      // Sukses → simpan UID member
-      saveMemberIdentity(data.uid);
-      showGateMessage('✅ Verifikasi berhasil!', false, true);
-      
-      setTimeout(() => {
-        hideGate();
-        if (typeof navigateToPage === 'function') {
-          navigateToPage('laporan');
-        }
-      }, 800);
-      
-    } else if (data.requireFull) {
-      // Kembar → minta nomor lengkap
-      console.log('⚠️ Nomor kembar → minta nomor lengkap');
-      showFullWaInput();
-      
-    } else {
-      // Gagal
-      showGateMessage(data.message || 'Verifikasi gagal', true);
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
+  // Simpan sebagai member identity
+  saveMemberIdentity(emergencyUid);
+  showGateMessage('✅ Verifikasi berhasil!', false, true);
+  
+  setTimeout(() => {
+    hideGate();
+    if (typeof navigateToPage === 'function') {
+      navigateToPage('laporan');
     }
-    
-  } catch (e) {
-    console.error('❌ Error submit gate:', e);
-    showGateMessage('Koneksi gagal. Coba lagi.', true);
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
+  }, 800);
+}
+
+// ==========================================
+// 🚨 HELPER: Generate Random String (untuk UID darurat)
+// ==========================================
+function generateRandomString(length) {
+  var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  var result = '';
+  for (var i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
+  return result;
 }
 
 // ==========================================

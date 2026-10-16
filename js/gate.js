@@ -170,9 +170,6 @@ function hideGate() {
 }
 
 // ==========================================
-// SUBMIT 6 DIGIT WA
-// ==========================================
-// ==========================================
 // 🚨 DARURAT: Submit Gate via Nama Leader (FLAT)
 // ==========================================
 async function submitGate() {
@@ -199,7 +196,7 @@ async function submitGate() {
     return;
   }
   
-  // ✅ Nama cocok → langsung masuk (tanpa GAS)
+  // ✅ Nama cocok → generate UID darurat & masuk
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMVERIFIKASI...';
   showGateMessage('');

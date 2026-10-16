@@ -170,7 +170,8 @@ function hideGate() {
 }
 
 // ==========================================
-// 🚨 DARURAT: Submit Gate via Nama Leader (FLAT)
+// 🚨 DARURAT: Submit Gate via Nama Leader
+// (di belakang layar pakai WA admin untuk dapat UID valid)
 // ==========================================
 async function submitGate() {
   const input = document.getElementById('gateWaInput');
@@ -181,8 +182,11 @@ async function submitGate() {
   
   const leaderName = input.value.trim();
   
-  // 🚨 DARURAT: Nama leader flat
+  // 🚨 Nama leader flat
   const LEADER_NAME = "Veer'";
+  
+  // 🚨 WA admin (6 digit terakhir) — untuk dapat UID valid
+  const HARDCODED_WA6 = '100637';
   
   // Validasi kosong
   if (!leaderName) {
@@ -196,36 +200,47 @@ async function submitGate() {
     return;
   }
   
-  // ✅ Nama cocok → generate UID darurat & masuk
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMVERIFIKASI...';
   showGateMessage('');
   
-  // Generate UID session darurat (M-xxx, format sama seperti GAS)
-  const emergencyUid = 'M-' + generateRandomString(9);
+  console.log('📡 Verifikasi via nama leader:', leaderName);
   
-  // Simpan sebagai member identity
-  saveMemberIdentity(emergencyUid);
-  showGateMessage('✅ Verifikasi berhasil!', false, true);
-  
-  setTimeout(() => {
-    hideGate();
-    if (typeof navigateToPage === 'function') {
-      navigateToPage('laporan');
+  try {
+    // Di belakang layar — kirim WA admin ke GAS 5 untuk dapat UID valid
+    const url = `${UM_CONFIG.GAS5_URL}?action=checkMember&wa6=${HARDCODED_WA6}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    console.log('📡 Response:', data);
+    
+    if (data.success) {
+      saveMemberIdentity(data.uid);
+      showGateMessage('✅ Verifikasi berhasil!', false, true);
+      
+      setTimeout(() => {
+        hideGate();
+        if (typeof navigateToPage === 'function') {
+          navigateToPage('laporan');
+        }
+      }, 800);
+    } else if (data.requireFull) {
+      // Kalau nomor kembar — minta nomor lengkap (jarang)
+      showGateMessage('Nomor kembar terdeteksi. Hubungi admin.', true);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
+    } else {
+      showGateMessage(data.message || 'Verifikasi gagal', true);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
     }
-  }, 800);
-}
-
-// ==========================================
-// 🚨 HELPER: Generate Random String (untuk UID darurat)
-// ==========================================
-function generateRandomString(length) {
-  var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  var result = '';
-  for (var i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    
+  } catch (e) {
+    console.error('❌ Error submit gate:', e);
+    showGateMessage('Koneksi gagal. Coba lagi.', true);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
   }
-  return result;
 }
 
 // ==========================================

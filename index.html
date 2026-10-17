@@ -20,36 +20,19 @@
                 <i class="fas fa-shield-alt"></i>
             </div>
             <div class="gate-title">Verifikasi Member</div>
-            <div class="gate-subtitle">Masukkan nama leader saat ini untuk mengakses halaman ini.</div>
+            <div class="gate-subtitle" id="gateQuestion">Memuat pertanyaan...</div>
             
-            <!-- FORM DARURAT — NAMA LEADER -->
-            <div id="gateFormNormal">
+            <!-- FORM KODE AKSES -->
+            <div id="gateForm">
                 <div class="gate-form-group">
-                    <label><i class="fas fa-crown"></i> Nama Leader</label>
+                    <label><i class="fas fa-lock"></i> Kode Akses</label>
                     <input type="text" 
-                           id="gateWaInput" 
+                           id="gateCodeInput" 
                            class="gate-input" 
-                           placeholder="Ketik nama leader..." 
+                           placeholder="Masukkan jawaban..." 
                            autocomplete="off">
                 </div>
                 <button id="gateSubmitBtn" class="gate-btn" onclick="submitGate()">
-                    <i class="fas fa-shield-alt"></i> VERIFIKASI
-                </button>
-            </div>
-            
-            <!-- FORM NOMOR LENGKAP (KALAU KEMBAR) -->
-            <div id="gateFormFull" style="display: none;">
-                <div class="gate-form-group">
-                    <label><i class="fas fa-phone"></i> Nomor WA Lengkap</label>
-                    <input type="tel" 
-                           id="gateWaFullInput" 
-                           class="gate-input" 
-                           placeholder="628123456789" 
-                           inputmode="numeric"
-                           pattern="[0-9]*"
-                           autocomplete="off">
-                </div>
-                <button id="gateSubmitFullBtn" class="gate-btn" onclick="submitGateFull()">
                     <i class="fas fa-shield-alt"></i> VERIFIKASI
                 </button>
             </div>

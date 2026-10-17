@@ -1,20 +1,22 @@
 /**
- * gate.js — Gate Verifikasi Member (Fase 1)
+ * gate.js — Gate Verifikasi Member
  * 
  * Alur:
  * 1. Cek `u_uid` di localStorage.
  * 2. Kalau ada → fetch GAS 5 checkUidType → tahu tipenya.
  * 3. Kalau member → langsung masuk.
  * 4. Kalau bukan → tampilkan gate.
- * 5. Gate input 6 digit WA → GAS 5 checkMember → return UID M-xxx.
+ * 5. Gate input kode akses → GAS 5 checkAccessCode → return UID M-xxx.
  * 6. Simpan UID + set class member.
+ * 
+ * Perubahan dari Fase 1:
+ * - Hapus 6 digit WA
+ * - Ganti ke kode akses
+ * - Pertanyaan dari GAS 5 getGateQuestion
  * 
  * DEPENDENSI: config.js (UM_CONFIG)
  */
 
-// ==========================================
-// CEK STATUS GATE SAAT LOAD
-// ==========================================
 // ==========================================
 // CEK STATUS GATE SAAT LOAD + VERIFIKASI BACKGROUND
 // ==========================================
@@ -24,6 +26,7 @@ async function checkGateStatus() {
   // 1. Tidak ada UID → tampilkan gate
   if (!uUid) {
     console.log('🔒 Tidak ada UID → tampilkan gate');
+    await loadGateQuestion();
     showGate();
     return false;
   }
@@ -47,6 +50,7 @@ async function checkGateStatus() {
     if (data.error && data.error.indexOf('Unauthorized') !== -1) {
       console.log('🔒 UID ditolak server → hapus & tampilkan gate');
       localStorage.removeItem('u_uid');
+      await loadGateQuestion();
       showGate();
       return false;
     }
@@ -60,6 +64,7 @@ async function checkGateStatus() {
       // Guest / UID tidak valid / member nonaktif → hapus UID & tampilkan gate
       console.log('🔒 Tidak valid → hapus UID & tampilkan gate');
       localStorage.removeItem('u_uid');
+      await loadGateQuestion();
       showGate();
       return false;
     }
@@ -84,8 +89,34 @@ async function checkGateStatus() {
       hideGate();
       return true;
     }
+    await loadGateQuestion();
     showGate();
     return false;
+  }
+}
+
+// ==========================================
+// LOAD PERTANYAAN GATE DARI GAS 5
+// ==========================================
+async function loadGateQuestion() {
+  try {
+    const url = `${UM_CONFIG.GAS5_URL}?action=getGateQuestion`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    console.log('📡 Gate question response:', data);
+    
+    if (data.success && data.question) {
+      const label = document.getElementById('gateQuestion');
+      if (label) label.textContent = data.question;
+    } else {
+      const label = document.getElementById('gateQuestion');
+      if (label) label.textContent = 'Masukkan Kode Akses';
+    }
+  } catch(e) {
+    console.error('❌ Load gate question error:', e);
+    const label = document.getElementById('gateQuestion');
+    if (label) label.textContent = 'Masukkan Kode Akses';
   }
 }
 
@@ -116,6 +147,7 @@ async function verifyMemberBackground() {
       console.log('🔴 Verifikasi background: tidak valid — logout');
       localStorage.removeItem('u_uid');
       localStorage.removeItem('u_last_verify');
+      await loadGateQuestion();
       showGate();
       // Reload biar bersih
       setTimeout(() => location.reload(), 1500);
@@ -170,51 +202,39 @@ function hideGate() {
 }
 
 // ==========================================
-// 🚨 DARURAT: Submit Gate via Nama Leader
-// (di belakang layar pakai WA admin untuk dapat UID valid)
+// SUBMIT KODE AKSES
 // ==========================================
 async function submitGate() {
-  const input = document.getElementById('gateWaInput');
+  const input = document.getElementById('gateCodeInput');
   const messageEl = document.getElementById('gateMessage');
   const btn = document.getElementById('gateSubmitBtn');
   
   if (!input || !messageEl || !btn) return;
   
-  const leaderName = input.value.trim();
+  const code = input.value.trim();
   
-  // 🚨 Nama leader flat
-  const LEADER_NAME = "Veer'";
-  
-  // 🚨 WA admin (6 digit terakhir) — untuk dapat UID valid
-  const HARDCODED_WA6 = '100637';
-  
-  // Validasi kosong
-  if (!leaderName) {
-    showGateMessage('Masukkan nama leader', true);
+  // Validasi
+  if (!code || code.length < 3) {
+    showGateMessage('Masukkan kode akses (minimal 3 karakter)', true);
     return;
   }
   
-  // Cek nama leader (case-insensitive)
-  if (leaderName.toLowerCase() !== LEADER_NAME.toLowerCase()) {
-    showGateMessage('Nama leader salah', true);
-    return;
-  }
-  
+  // Disable button
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMVERIFIKASI...';
   showGateMessage('');
   
-  console.log('📡 Verifikasi via nama leader:', leaderName);
+  console.log('📡 Verifikasi kode akses:', code);
   
   try {
-    // Di belakang layar — kirim WA admin ke GAS 5 untuk dapat UID valid
-    const url = `${UM_CONFIG.GAS5_URL}?action=checkMember&wa6=${HARDCODED_WA6}`;
+    const url = `${UM_CONFIG.GAS5_URL}?action=checkAccessCode&code=${encodeURIComponent(code)}`;
     const res = await fetch(url);
     const data = await res.json();
     
     console.log('📡 Response:', data);
     
     if (data.success) {
+      // Sukses → simpan UID member
       saveMemberIdentity(data.uid);
       showGateMessage('✅ Verifikasi berhasil!', false, true);
       
@@ -224,75 +244,16 @@ async function submitGate() {
           navigateToPage('laporan');
         }
       }, 800);
-    } else if (data.requireFull) {
-      // Kalau nomor kembar — minta nomor lengkap (jarang)
-      showGateMessage('Nomor kembar terdeteksi. Hubungi admin.', true);
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
+      
     } else {
-      showGateMessage(data.message || 'Verifikasi gagal', true);
+      // Gagal
+      showGateMessage(data.message || 'Kode akses salah', true);
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
     }
     
   } catch (e) {
     console.error('❌ Error submit gate:', e);
-    showGateMessage('Koneksi gagal. Coba lagi.', true);
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
-  }
-}
-
-// ==========================================
-// SUBMIT NOMOR LENGKAP (KALAU KEMBAR)
-// ==========================================
-async function submitGateFull() {
-  const input = document.getElementById('gateWaFullInput');
-  const messageEl = document.getElementById('gateMessage');
-  const btn = document.getElementById('gateSubmitFullBtn');
-  
-  if (!input || !messageEl || !btn) return;
-  
-  const wa = input.value.trim().replace(/\D/g, '');
-  
-  if (!wa || wa.length < 10) {
-    showGateMessage('Masukkan nomor WA lengkap (min 10 digit)', true);
-    return;
-  }
-  
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMVERIFIKASI...';
-  showGateMessage('');
-  
-  console.log('📡 Verifikasi nomor lengkap:', wa);
-  
-  try {
-    // verifyMemberFull = pintu masuk, TIDAK perlu API key
-    const url = `${UM_CONFIG.GAS5_URL}?action=verifyMemberFull&wa=${encodeURIComponent(wa)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    
-    console.log('📡 Response:', data);
-    
-    if (data.success) {
-      saveMemberIdentity(data.uid);
-      showGateMessage('✅ Verifikasi berhasil!', false, true);
-      
-      setTimeout(() => {
-        hideGate();
-        if (typeof navigateToPage === 'function') {
-          navigateToPage('laporan');
-        }
-      }, 800);
-      
-    } else {
-      showGateMessage(data.message || 'Verifikasi gagal', true);
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
-    }
-    
-  } catch (e) {
-    console.error('❌ Error submit gate full:', e);
     showGateMessage('Koneksi gagal. Coba lagi.', true);
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
@@ -323,19 +284,6 @@ function saveMemberIdentity(uid) {
 }
 
 // ==========================================
-// TAMPILKAN INPUT NOMOR LENGKAP
-// ==========================================
-function showFullWaInput() {
-  const formNormal = document.getElementById('gateFormNormal');
-  const formFull = document.getElementById('gateFormFull');
-  
-  if (formNormal) formNormal.style.display = 'none';
-  if (formFull) formFull.style.display = 'block';
-  
-  showGateMessage('Nomor kembar terdeteksi. Masukkan nomor lengkap.', true);
-}
-
-// ==========================================
 // TAMPILKAN PESAN
 // ==========================================
 function showGateMessage(msg, isError = false, isSuccess = false) {
@@ -358,8 +306,23 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ==========================================
+// ENTER KEY HANDLER
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+  const input = document.getElementById('gateCodeInput');
+  if (input) {
+    input.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitGate();
+      }
+    });
+  }
+});
+
+// ==========================================
 // EXPOSE
 // ==========================================
 window.submitGate = submitGate;
-window.submitGateFull = submitGateFull;
 window.checkGateStatus = checkGateStatus;
+window.loadGateQuestion = loadGateQuestion;

@@ -273,14 +273,16 @@ function saveMemberIdentity(uid) {
     window.myUID = uid;
   }
   
-  // 🎯 IGN KOSONGKAN — user isi manual di web publik
-  localStorage.setItem('u_ign', '');
+  // 🎯 Pertahankan u_ign yang sudah ada — jangan dikosongkan
+  const existingIgn = localStorage.getItem('u_ign') || '';
   if (typeof window !== 'undefined') {
-    window.myIGN = '';
+    window.myIGN = existingIgn;
   }
   
   console.log('✅ Member identity tersimpan:', uid);
-  console.log('ℹ️ IGN kosong — user isi di web publik');
+  console.log(existingIgn 
+    ? 'ℹ️ IGN dilanjutkan: ' + existingIgn 
+    : 'ℹ️ IGN kosong — user isi di web publik');
 }
 
 // ==========================================

@@ -199,6 +199,8 @@ function hideGate() {
     console.log('🎨 Build menu setelah gate terbuka');
     buildMenu();
   }
+  window.umbrellaGateVerified = true;
+  window.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
 }
 
 // ==========================================

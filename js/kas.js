@@ -2,7 +2,6 @@
 // URL & API key dari config.js (UM_CONFIG)
 const CACHE_KEY = 'kas_data';
 const CACHE_KEY_HISTORY = 'kas_history';
-const CACHE_EXPIRY = 24 * 60 * 60 * 1000;
 const START_YEAR = 2025;
 const START_MONTH = 6;
 

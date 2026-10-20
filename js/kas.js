@@ -921,6 +921,15 @@ window.currentTahun = currentTahun;
 window.currentBulan = currentBulan;
 
 // ==================== INIT ====================
+// tunggu gate verified baru preload
 document.addEventListener('DOMContentLoaded', function() {
+  function tryPreload() {
     setTimeout(preloadPrevMonth, 500);
+  }
+  
+  if (window.umbrellaGateVerified) {
+    tryPreload();
+  } else {
+    document.addEventListener('umbrella-gate-verified', tryPreload, { once: true });
+  }
 });

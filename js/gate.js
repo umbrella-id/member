@@ -202,9 +202,50 @@ function hideGate() {
 }
 
 // ==========================================
+// RATE LIMIT GATE
+// ==========================================
+const GATE_LOCKOUT_KEY = 'umbrella_gate_lockout';
+const GATE_FAIL_KEY = 'umbrella_gate_fails';
+const GATE_MAX_FAILS = 5;
+const GATE_LOCKOUT_MS = 10 * 60 * 1000;  // 10 menit
+
+function checkGateLockout() {
+  const lockoutUntil = parseInt(localStorage.getItem(GATE_LOCKOUT_KEY) || '0');
+  if (Date.now() < lockoutUntil) {
+    const sisaMs = lockoutUntil - Date.now();
+    const sisaMenit = Math.ceil(sisaMs / 60000);
+    return { locked: true, sisaMenit };
+  }
+  return { locked: false };
+}
+
+function recordGateFail() {
+  const fails = parseInt(localStorage.getItem(GATE_FAIL_KEY) || '0') + 1;
+  localStorage.setItem(GATE_FAIL_KEY, fails.toString());
+  
+  if (fails >= GATE_MAX_FAILS) {
+    localStorage.setItem(GATE_LOCKOUT_KEY, (Date.now() + GATE_LOCKOUT_MS).toString());
+    localStorage.setItem(GATE_FAIL_KEY, '0');
+    return { locked: true, sisaMenit: Math.ceil(GATE_LOCKOUT_MS / 60000) };
+  }
+  return { locked: false, remaining: GATE_MAX_FAILS - fails };
+}
+
+function recordGateSuccess() {
+  localStorage.removeItem(GATE_FAIL_KEY);
+  localStorage.removeItem(GATE_LOCKOUT_KEY);
+}
+
+// ==========================================
 // SUBMIT KODE AKSES
 // ==========================================
 async function submitGate() {
+  const lockout = checkGateLockout();
+  if (lockout.locked) {
+    showGateMessage(`Terlalu banyak percobaan. Coba lagi dalam ${lockout.sisaMenit} menit.`, true);
+    return;
+  }
+  
   const input = document.getElementById('gateCodeInput');
   const messageEl = document.getElementById('gateMessage');
   const btn = document.getElementById('gateSubmitBtn');
@@ -213,13 +254,11 @@ async function submitGate() {
   
   const code = input.value.trim();
   
-  // Validasi
   if (!code || code.length < 3) {
     showGateMessage('Masukkan kode akses (minimal 3 karakter)', true);
     return;
   }
   
-  // Disable button
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMVERIFIKASI...';
   showGateMessage('');
@@ -234,8 +273,8 @@ async function submitGate() {
     console.log('📡 Response:', data);
     
     if (data.success) {
-      // Sukses → simpan UID member
       saveMemberIdentity(data.uid);
+      recordGateSuccess();  // BARU: reset counter
       showGateMessage('✅ Verifikasi berhasil!', false, true);
       
       setTimeout(() => {
@@ -246,13 +285,21 @@ async function submitGate() {
       }, 800);
       
     } else {
-      // Gagal
-      showGateMessage(data.message || 'Kode akses salah', true);
+      // BARU: hitung gagal
+      const fail = recordGateFail();
+      
+      if (fail.locked) {
+        showGateMessage(`Terlalu banyak percobaan. Coba lagi dalam ${fail.sisaMenit} menit.`, true);
+      } else {
+        showGateMessage(data.message || 'Kode akses salah', true);
+      }
+      
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
     }
     
   } catch (e) {
+    // Network error — TIDAK dihitung sebagai gagal (bukan upaya brute force)
     console.error('❌ Error submit gate:', e);
     showGateMessage('Koneksi gagal. Coba lagi.', true);
     btn.disabled = false;

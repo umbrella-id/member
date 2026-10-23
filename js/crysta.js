@@ -641,19 +641,6 @@ function showToastCrysta(msg, isError) {
     }, 3000);
 }
 
-// ==================== UTILITY ====================
-function escapeHtml(text) {
-    if (!text || text === '') return '';
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function escapeJs(text) {
-    if (!text) return '';
-    return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
-
 // ==================== EXPOSE ====================
 window.renderCrysta = renderCrysta;
 window.openCrystaDetail = openCrystaDetail;

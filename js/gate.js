@@ -22,19 +22,29 @@
 // ==========================================
 async function checkGateStatus() {
   const uUid = localStorage.getItem('u_uid') || '';
+  const lastVerify = parseInt(localStorage.getItem('u_last_verify') || '0');
+  const CACHE_MS = 5 * 60 * 1000;  // 5 menit
   
-  // 🆕 Load pertanyaan paralel dengan cek UID
+  // 🆕 SKIP TOTAL kalau verified < 5 menit lalu
+  if (uUid && (Date.now() - lastVerify) < CACHE_MS) {
+    console.log('⚡ Verified < 5 menit — skip fetch');
+    hideGate();
+    // Refresh cache timestamp di background (untuk extend 5 menit)
+    setTimeout(() => {
+      localStorage.setItem('u_last_verify', Date.now().toString());
+    }, 100);
+    return true;
+  }
+  
+  // Load pertanyaan paralel (Layer 2 sebelumnya)
   const questionPromise = loadGateQuestion();
   
-  // 1. Tidak ada UID → tampil gate (pertanyaan sudah dimuat)
   if (!uUid) {
-    console.log('🔒 Tidak ada UID → tampilkan gate');
     await questionPromise;
     showGate();
     return false;
   }
   
-  // 2. Cek tipe ke GAS 5
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
   
@@ -47,6 +57,7 @@ async function checkGateStatus() {
     
     if (data.error && data.error.indexOf('Unauthorized') !== -1) {
       localStorage.removeItem('u_uid');
+      localStorage.removeItem('u_last_verify');
       await questionPromise;
       showGate();
       return false;
@@ -54,10 +65,12 @@ async function checkGateStatus() {
     
     if (data.success && data.type === 'member' && data.valid === true) {
       console.log('✅ Tipe member valid → masuk');
+      localStorage.setItem('u_last_verify', Date.now().toString());
       hideGate();
       return true;
     } else {
       localStorage.removeItem('u_uid');
+      localStorage.removeItem('u_last_verify');
       await questionPromise;
       showGate();
       return false;
@@ -68,6 +81,7 @@ async function checkGateStatus() {
     if (e.name === 'AbortError') {
       console.warn('⏰ Timeout cek UID (10s) — fail open');
       if (uUid) {
+        localStorage.setItem('u_last_verify', Date.now().toString());
         hideGate();
         return true;
       }
@@ -75,6 +89,7 @@ async function checkGateStatus() {
     
     if (uUid) {
       console.log('⚠️ Koneksi error, fail open');
+      localStorage.setItem('u_last_verify', Date.now().toString());
       hideGate();
       return true;
     }
@@ -167,7 +182,7 @@ function showGate() {
   const mainContent = document.getElementById('mainContent');
   const menuFloat = document.querySelector('.menu-float');
   
-  if (gate) gate.style.display = 'flex';
+  if (gate) gate.classList.add('open');
   if (mainContent) mainContent.style.display = 'none';
   if (menuFloat) menuFloat.style.display = 'none';
 }
@@ -175,21 +190,21 @@ function showGate() {
 // ==========================================
 // SEMBUNYIKAN GATE
 // ==========================================
-document.body.classList.add('gate-active');
-
 function hideGate() {
   const gate = document.getElementById('internalGate');
   const mainContent = document.getElementById('mainContent');
   const menuFloat = document.querySelector('.menu-float');
   
-  if (gate) gate.style.display = 'none';
+  if (gate) {
+    gate.classList.remove('open');
+    gate.style.display = 'none';
+  }
   if (mainContent) mainContent.style.display = 'flex';
   if (menuFloat) menuFloat.style.display = 'flex';
   
   document.body.classList.remove('gate-active');
   
   if (typeof buildMenu === 'function') {
-    console.log('🎨 Build menu setelah gate terbuka');
     buildMenu();
   }
 }
@@ -267,7 +282,7 @@ async function submitGate() {
     
     if (data.success) {
       saveMemberIdentity(data.uid);
-      recordGateSuccess();  // BARU: reset counter
+      localStorage.setItem('u_last_verify', Date.now().toString()); 
       showGateMessage('✅ Verifikasi berhasil!', false, true);
       
       setTimeout(() => {
@@ -276,7 +291,6 @@ async function submitGate() {
           navigateToPage('laporan');
         }
       }, 800);
-      
     } else {
       // BARU: hitung gagal
       const fail = recordGateFail();

@@ -553,6 +553,12 @@ function openCrystaDetail(crystaName) {
         var line = statLines[i].trim();
         if (!line) continue;
         
+        // 🆕 Detect conditional header (misal "1-Handed Sword only:", "Knuckle only:")
+        if (/only\s*:\s*$/i.test(line) || /:\s*$/.test(line)) {
+            formattedStat += '<span class="stat-condition">' + escapeHtml(line) + '</span>\n';
+            continue;
+        }
+        
         var hasNegative = false;
         var hasPositive = false;
         

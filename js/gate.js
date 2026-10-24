@@ -23,18 +23,18 @@
 async function checkGateStatus() {
   const uUid = localStorage.getItem('u_uid') || '';
   
-  // 1. Tidak ada UID → tampilkan gate
+  // 🆕 Load pertanyaan paralel dengan cek UID
+  const questionPromise = loadGateQuestion();
+  
+  // 1. Tidak ada UID → tampil gate (pertanyaan sudah dimuat)
   if (!uUid) {
     console.log('🔒 Tidak ada UID → tampilkan gate');
-    await loadGateQuestion();
+    await questionPromise;
     showGate();
     return false;
   }
   
-  // 2. Cek tipe ke GAS 5 (sekaligus validasi)
-  console.log('🔍 Cek tipe UID:', uUid);
-  
-  // 🕐 Timeout 10 detik biar tidak stuck
+  // 2. Cek tipe ke GAS 5
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
   
@@ -44,34 +44,27 @@ async function checkGateStatus() {
     clearTimeout(timeoutId);
     
     const data = await res.json();
-    console.log('📡 GAS 5 response:', data);
     
-    // 🆕 Kalau GAS5 return error Unauthorized (UID tidak valid)
     if (data.error && data.error.indexOf('Unauthorized') !== -1) {
-      console.log('🔒 UID ditolak server → hapus & tampilkan gate');
       localStorage.removeItem('u_uid');
-      await loadGateQuestion();
+      await questionPromise;
       showGate();
       return false;
     }
     
     if (data.success && data.type === 'member' && data.valid === true) {
-      // Member aktif → langsung masuk
       console.log('✅ Tipe member valid → masuk');
       hideGate();
       return true;
     } else {
-      // Guest / UID tidak valid / member nonaktif → hapus UID & tampilkan gate
-      console.log('🔒 Tidak valid → hapus UID & tampilkan gate');
       localStorage.removeItem('u_uid');
-      await loadGateQuestion();
+      await questionPromise;
       showGate();
       return false;
     }
   } catch (e) {
     clearTimeout(timeoutId);
     
-    // Kalau timeout / abort
     if (e.name === 'AbortError') {
       console.warn('⏰ Timeout cek UID (10s) — fail open');
       if (uUid) {
@@ -80,16 +73,13 @@ async function checkGateStatus() {
       }
     }
     
-    console.error('❌ Error cek tipe UID:', e);
-    // 🔓 FAIL OPEN: kalau error koneksi, cek dulu apakah UID ada
-    // Kalau ada → biarkan akses (jangan ganggu user karena server error)
-    // Kalau tidak ada → tampilkan gate
     if (uUid) {
-      console.log('⚠️ Koneksi error, fail open — pakai UID existing');
+      console.log('⚠️ Koneksi error, fail open');
       hideGate();
       return true;
     }
-    await loadGateQuestion();
+    
+    await questionPromise;
     showGate();
     return false;
   }
@@ -185,6 +175,8 @@ function showGate() {
 // ==========================================
 // SEMBUNYIKAN GATE
 // ==========================================
+document.body.classList.add('gate-active');
+
 function hideGate() {
   const gate = document.getElementById('internalGate');
   const mainContent = document.getElementById('mainContent');
@@ -194,13 +186,12 @@ function hideGate() {
   if (mainContent) mainContent.style.display = 'flex';
   if (menuFloat) menuFloat.style.display = 'flex';
   
-  // Build menu setelah gate terbuka
+  document.body.classList.remove('gate-active');
+  
   if (typeof buildMenu === 'function') {
     console.log('🎨 Build menu setelah gate terbuka');
     buildMenu();
   }
-  window.umbrellaGateVerified = true;
-  window.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
 }
 
 // ==========================================

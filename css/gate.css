@@ -7,18 +7,18 @@
   inset: 0;
   background: var(--bg-dark);
   z-index: 9999;
-  display: flex; 
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 20px;
 }
 
-/* 🆕 Gate hanya animasi kalau memang terbuka */
 #internalGate.open {
+  display: flex;
   animation: gateFadeIn 0.3s ease;
 }
 
-/* 🆕 Sembunyikan konten utama selama gate aktif */
+/* Konten hidden selama body.gate-active */
 body.gate-active #mainContent,
 body.gate-active .menu-float {
   display: none !important;

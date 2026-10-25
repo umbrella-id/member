@@ -563,7 +563,7 @@ function openCrystaDetail(crystaName) {
                 else break;
             }
             if (prevBlank && formattedStat !== '') {
-                formattedStat += '<div class="stat-spacer"></div>';
+                formattedStat += '\n';
             }
             formattedStat += '<span class="stat-condition">' + escapeHtml(line) + '</span>\n';
             continue;

@@ -553,8 +553,18 @@ function openCrystaDetail(crystaName) {
         var line = statLines[i].trim();
         if (!line) continue;
         
-        // 🆕 Detect conditional header (misal "1-Handed Sword only:", "Knuckle only:")
-        if (/only\s*:\s*$/i.test(line) || /:\s*$/.test(line)) {
+        // Deteksi header kondisional (misal "Knuckle only:", "1-Handed Sword only:")
+        if (/only\s*:\s*$/i.test(line) || /^[a-zA-Z\s%()\-_]+\s*:$/.test(line)) {
+            // 🆕 Cek apakah baris sebelumnya blank → kalau ya, tambahkan spacer
+            var prevBlank = false;
+            for (var k = i - 1; k >= 0; k--) {
+                var prevLine = statLines[k].trim();
+                if (prevLine === '') { prevBlank = true; }
+                else break;
+            }
+            if (prevBlank && formattedStat !== '') {
+                formattedStat += '<div class="stat-spacer"></div>';
+            }
             formattedStat += '<span class="stat-condition">' + escapeHtml(line) + '</span>\n';
             continue;
         }

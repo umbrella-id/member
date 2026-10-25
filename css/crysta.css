@@ -426,6 +426,19 @@
 
 .crysta-detail-stat .stat-content .stat-neutral {
     color: var(--text-main);
+}.crysta-detail-stat .stat-content .stat-condition {
+    display: block;
+    color: #bee0fa;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+    margin-top: 2px;     
+    margin-bottom: 2px;
+    opacity: 0.9;
+}
+
+.crysta-detail-stat .stat-content .stat-spacer {
+    height: 8px;
 }
 
 /* ==========================================

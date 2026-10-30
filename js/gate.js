@@ -22,14 +22,20 @@
 // ==========================================
 async function checkGateStatus() {
   const uUid = localStorage.getItem('u_uid') || '';
+  const sessionToken = localStorage.getItem('umbrella_session_token') || '';
   const lastVerify = parseInt(localStorage.getItem('u_last_verify') || '0');
-  const CACHE_MS = 5 * 60 * 1000;  // 5 menit
+  const CACHE_MS = 5 * 60 * 1000;
   
-  // 🆕 SKIP TOTAL kalau verified < 5 menit lalu
-  if (uUid && (Date.now() - lastVerify) < CACHE_MS) {
+  // BARU: migrasi — uid ada tapi token tidak ada → force re-gate
+  if (uUid && !sessionToken) {
+    console.log('🔄 Migrasi: uid ada tanpa token, force re-gate');
+    localStorage.removeItem('u_uid');
+    localStorage.removeItem('u_last_verify');
+  }
+  
+  if (uUid && sessionToken && (Date.now() - lastVerify) < CACHE_MS) {
     console.log('⚡ Verified < 5 menit — skip fetch');
     hideGate();
-    // Refresh cache timestamp di background (untuk extend 5 menit)
     setTimeout(() => {
       localStorage.setItem('u_last_verify', Date.now().toString());
     }, 100);
@@ -280,18 +286,25 @@ async function submitGate() {
     
     console.log('📡 Response:', data);
     
-    if (data.success) {
-      saveMemberIdentity(data.uid);
-      localStorage.setItem('u_last_verify', Date.now().toString()); 
-      showGateMessage('✅ Verifikasi berhasil!', false, true);
-      
-      setTimeout(() => {
-        hideGate();
-        if (typeof navigateToPage === 'function') {
-          navigateToPage('laporan');
-        }
-      }, 800);
-    } else {
+if (data.success) {
+  saveMemberIdentity(data.uid);
+  localStorage.setItem('u_last_verify', Date.now().toString()); 
+  
+  // BARU: simpan session token
+  if (data.sessionToken) {
+    localStorage.setItem('umbrella_session_token', data.sessionToken);
+    console.log('🔑 Session token tersimpan');
+  }
+  
+  showGateMessage('✅ Verifikasi berhasil!', false, true);
+  
+  setTimeout(() => {
+    hideGate();
+    if (typeof navigateToPage === 'function') {
+      navigateToPage('laporan');
+    }
+  }, 800);
+} else {
       // BARU: hitung gagal
       const fail = recordGateFail();
       

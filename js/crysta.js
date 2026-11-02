@@ -1,7 +1,3 @@
-// ==================== KONFIGURASI ====================
-var CRYSTA_CACHE_KEY = 'crysta_data';
-var CRYSTA_CACHE_EXPIRY = 24 * 60 * 60 * 1000;
-
 // Helper: bangun URL GAS5 fresh (UID dari localStorage)
 function getCrystaUrl() {
     if (typeof buildGas5Url === 'function') {

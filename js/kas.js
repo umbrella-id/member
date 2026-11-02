@@ -19,41 +19,77 @@ let isFetchingHistory = false;
 let historyRendered = false;
 let isNavigating = false;
 
-// ==================== CACHE FUNCTIONS ====================
+// ==================== IN-MEMORY CACHE ====================
+// Tidak disimpan di localStorage/sessionStorage.
+// Hilang saat refresh (wajar). Di-warm-up dari preload saat gate verify.
+
+const memCache = { kas: {}, history: null };
+const inFlightKas = {};
+let inFlightHistory = null;
+
 function getCache(key) {
-    try {
-        const raw = localStorage.getItem(CACHE_KEY + '_' + key);
-        if (!raw) return null;
-        const data = JSON.parse(raw);
-        return data.value;
-    } catch (e) { return null; }
+    return memCache.kas[key] || null;
 }
 
 function setCache(key, value) {
-    try {
-        localStorage.setItem(CACHE_KEY + '_' + key, JSON.stringify({
-            timestamp: Date.now(),
-            value: value
-        }));
-    } catch (e) { /* ignore */ }
+    memCache.kas[key] = value;
 }
 
 function getHistoryCache() {
-    try {
-        const raw = localStorage.getItem(CACHE_KEY_HISTORY);
-        if (!raw) return null;
-        const data = JSON.parse(raw);
-        return data.value;
-    } catch (e) { return null; }
+    return memCache.history;
 }
 
 function setHistoryCache(value) {
-    try {
-        localStorage.setItem(CACHE_KEY_HISTORY, JSON.stringify({
-            timestamp: Date.now(),
-            value: value
-        }));
-    } catch (e) { /* ignore */ }
+    memCache.history = value;
+}
+
+// ==================== DEDUPLICATED FETCH ====================
+// Mencegah double-fetch saat preload & render bersamaan
+
+function fetchKas(tahun, bulan) {
+    const key = tahun + '-' + bulan;
+    
+    if (memCache.kas[key]) return Promise.resolve(memCache.kas[key]);
+    if (inFlightKas[key]) return inFlightKas[key];
+    
+    const url = buildKasUrl('getMonthlyTable', { tahun, bulan });
+    inFlightKas[key] = fetch(url)
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            if (data.success) memCache.kas[key] = data;
+            delete inFlightKas[key];
+            return data;
+        })
+        .catch(e => {
+            delete inFlightKas[key];
+            throw e;
+        });
+    return inFlightKas[key];
+}
+
+function fetchHistory() {
+    if (memCache.history) return Promise.resolve(memCache.history);
+    if (inFlightHistory) return inFlightHistory;
+    
+    const url = buildKasUrl('getHistory', { limit: 100 });
+    inFlightHistory = fetch(url)
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            if (data.success && data.data) memCache.history = data.data;
+            delete inFlightHistory;
+            return data;
+        })
+        .catch(e => {
+            delete inFlightHistory;
+            throw e;
+        });
+    return inFlightHistory;
 }
 
 // ==================== GENERATE MONTHS ====================
@@ -365,56 +401,49 @@ function updateHeader(data) {
 }
 
 // ==================== LOAD DATA ====================
-function loadData() {
+async function loadData() {
     const key = currentTahun + '-' + currentBulan;
-
     const cached = getCache(key);
 
     if (cached) {
-        console.log('✅ DATA KAS: Load dari cache untuk ' + key);
         renderTable(cached);
         updateHeader(cached);
         updateMonthLabel(cached);
         updateNavButtons();
         hideSkeleton();
     } else {
-        console.log('⏳ DATA KAS: Tidak ada cache, tampilkan skeleton');
         showSkeleton(30);
         updateMonthLabel(null);
     }
 
     loadHistory();
 
-    // 🔥 LOAD AWAL: SELALU FETCH UNTUK UPDATE CACHE
-    if (!isFetching) {
-        isFetching = true;
-        const url = buildKasUrl('getMonthlyTable', { tahun: currentTahun, bulan: currentBulan });
-        fetch(url)
-            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-            .then(data => {
-                // 🆕 Handle error Unauthorized
-                if (data.error && data.error.indexOf('Unauthorized') !== -1) {
-                    console.warn('🔒 Unauthorized — UID invalid, gate akan muncul');
-                    if (!cached) showError('Sesi Anda tidak valid. Silakan verifikasi ulang.');
-                    isFetching = false;
-                    // Auto refresh gate setelah 2 detik
-                    setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
-                    return;
-                }
-                
-                if (data.success) {
-                    setCache(key, data);
-                    console.log('🔄 DATA KAS: Update dari server untuk ' + key);
-                    renderTable(data);
-                    updateHeader(data);
-                    updateMonthLabel(data);
-                    updateNavButtons();
-                    hideSkeleton();
-                } else {
-                    if (!cached) showError(data.error || 'Gagal memuat data');
-                }
-                isFetching = false;
-            })
+    if (isFetching) return;
+    isFetching = true;
+
+    try {
+        const data = await fetchKas(currentTahun, currentBulan);
+        
+        if (data.error && data.error.indexOf('Unauthorized') !== -1) {
+            if (!cached) showError('Sesi Anda tidak valid. Silakan verifikasi ulang.');
+            isFetching = false;
+            setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
+            return;
+        }
+        
+        if (data.success) {
+            renderTable(data);
+            updateHeader(data);
+            updateMonthLabel(data);
+            updateNavButtons();
+            hideSkeleton();
+        } else if (!cached) {
+            showError(data.error || 'Gagal memuat data');
+        }
+    } catch(e) {
+        if (!cached) showError('Koneksi gagal');
+    } finally {
+        isFetching = false;
     }
 }
 
@@ -466,14 +495,13 @@ function loadDataNavigation() {
 }
 
 // ==================== HISTORY ====================
-function loadHistory() {
+async function loadHistory() {
     if (isFetchingHistory) return;
     isFetchingHistory = true;
 
     const cachedHistory = getHistoryCache();
 
     if (cachedHistory && cachedHistory.length > 0) {
-        console.log('✅ HISTORY: Load dari cache, jumlah:', cachedHistory.length);
         allHistoryData = cachedHistory;
         historyLoaded = true;
         renderHistory(allHistoryData);
@@ -481,49 +509,45 @@ function loadHistory() {
         if (historyContainer) historyContainer.style.display = 'block';
         historyRendered = true;
     } else {
-        console.log('⏳ HISTORY: Tidak ada cache, tampilkan spinner');
         if (loadingHistory) loadingHistory.style.display = 'block';
         if (historyContainer) historyContainer.style.display = 'none';
         historyRendered = false;
     }
 
-    fetch(buildKasUrl('getHistory', { limit: 100 }))
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(data => {
-            // 🆕 Handle error Unauthorized
-            if (data.error && data.error.indexOf('Unauthorized') !== -1) {
-                console.warn('🔒 Unauthorized — UID invalid (history)');
-                if (loadingHistory) loadingHistory.style.display = 'none';
-                if (historyBody) {
-                    historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f44336;">🔒 Sesi tidak valid. Verifikasi ulang.</td></tr>';
-                }
-                if (historyContainer) historyContainer.style.display = 'block';
-                historyRendered = true;
-                isFetchingHistory = false;
-                setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
-                return;
+    try {
+        const data = await fetchHistory();
+        
+        if (data.error && data.error.indexOf('Unauthorized') !== -1) {
+            if (loadingHistory) loadingHistory.style.display = 'none';
+            if (historyBody) {
+                historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f44336;">🔒 Sesi tidak valid.</td></tr>';
             }
-            
-            if (data.success && data.data && data.data.length > 0) {
-                console.log('🔄 HISTORY: Update dari server, jumlah:', data.data.length);
-                allHistoryData = data.data;
-                historyLoaded = true;
-                setHistoryCache(allHistoryData);
-                renderHistory(allHistoryData);
-                if (loadingHistory) loadingHistory.style.display = 'none';
-                if (historyContainer) historyContainer.style.display = 'block';
-                historyRendered = true;
-            } else if (!cachedHistory || cachedHistory.length === 0) {
-                if (loadingHistory) loadingHistory.style.display = 'none';
-                if (historyBody) {
-                    historyBody.innerHTML =
-                        '<tr><td colspan="5" style="text-align:center;padding:20px;color:#5a6488;">📭 Belum ada transaksi</td></tr>';
-                }
-                if (historyContainer) historyContainer.style.display = 'block';
-                historyRendered = true;
+            if (historyContainer) historyContainer.style.display = 'block';
+            historyRendered = true;
+            setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
+            return;
+        }
+        
+        if (data.success && data.data && data.data.length > 0) {
+            allHistoryData = data.data;
+            historyLoaded = true;
+            renderHistory(allHistoryData);
+            if (loadingHistory) loadingHistory.style.display = 'none';
+            if (historyContainer) historyContainer.style.display = 'block';
+            historyRendered = true;
+        } else if (!cachedHistory || cachedHistory.length === 0) {
+            if (loadingHistory) loadingHistory.style.display = 'none';
+            if (historyBody) {
+                historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#5a6488;">📭 Belum ada transaksi</td></tr>';
             }
-            isFetchingHistory = false;
-        })
+            if (historyContainer) historyContainer.style.display = 'block';
+            historyRendered = true;
+        }
+    } catch(e) {
+        console.error('History fetch error:', e);
+    } finally {
+        isFetchingHistory = false;
+    }
 }
 
 // ==================== RENDER HISTORY ====================
@@ -889,26 +913,39 @@ function showError(msg) {
     hideSkeleton();
 }
 
-// ==================== PRELOAD ====================
-function preloadPrevMonth() {
-    let idx = -1;
-    for (let i = 0; i < availableMonths.length; i++) {
-        if (availableMonths[i].tahun === currentTahun && availableMonths[i].bulan === currentBulan) {
-            idx = i;
-            break;
-        }
-    }
-    if (idx > 0) {
-        const prev = availableMonths[idx - 1];
-        const key = prev.tahun + '-' + prev.bulan;
-        if (!getCache(key)) {
-            const url = buildKasUrl('getMonthlyTable', { tahun: prev.tahun, bulan: prev.bulan });
-            fetch(url).then(r => r.json()).then(data => {
-                if (data.success) setCache(key, data);
-            }).catch(() => {});
-        }
+// ==================== PRELOAD (Dipicu saat gate verified) ====================
+async function preloadAllData() {
+    console.log('🚀 [PRELOAD] Mulai preload data kas...');
+    const now = new Date();
+    const tahun = now.getFullYear();
+    const bulan = now.getMonth() + 1;
+    
+    try {
+        await Promise.all([
+            fetchKas(tahun, bulan).catch(e => console.warn('[PRELOAD] Kas gagal:', e.message)),
+            fetchHistory().catch(e => console.warn('[PRELOAD] History gagal:', e.message))
+        ]);
+        console.log('✅ [PRELOAD] Selesai — cache siap');
+    } catch(e) {
+        console.warn('[PRELOAD] Error:', e);
     }
 }
+
+// Expose untuk dipanggil dari gate.js
+window.preloadAllData = preloadAllData;
+
+// ==================== INIT PRELOAD ====================
+document.addEventListener('DOMContentLoaded', function() {
+    // Jika gate sudah verified sebelum listener terpasang (race condition),
+    // atau tunggu event dari gate.js
+    if (window.umbrellaGateVerified) {
+        setTimeout(preloadAllData, 100);
+    } else {
+        document.addEventListener('umbrella-gate-verified', function() {
+            setTimeout(preloadAllData, 100);
+        }, { once: true });
+    }
+});
 
 // ==================== EXPOSE ====================
 window.renderLaporan = renderLaporan;

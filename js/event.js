@@ -21,8 +21,17 @@ function checkEventAvailability() {
             }
             // 🔥 Beri tahu app.js untuk rebuild menu
             if (typeof window.buildMenu === 'function') {
-                window.buildMenu();
+                // 🎯 Cek apakah menu sudah di-build (cegah double-render)
+                const menuPanel = document.querySelector('.menu-panel ul');
+                const menuIsBuilt = menuPanel && menuPanel.children.length > 0;
+                
+                if (!menuIsBuilt) {
+                    window.buildMenu();
+                } else {
+                    console.log('🎯 [EVENT] Menu sudah dibuild, skip rebuild');
+                }
             }
+
         })
         .catch(() => {
             console.log('❌ [EVENT] event.html tidak ditemukan (error).');

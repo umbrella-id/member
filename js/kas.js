@@ -957,16 +957,17 @@ window.allHistoryData = allHistoryData;
 window.currentTahun = currentTahun;
 window.currentBulan = currentBulan;
 
-// ==================== INIT ====================
-// tunggu gate verified baru preload
+// ==================== INIT: PRELOAD SAAT GATE VERIFIED ====================
 document.addEventListener('DOMContentLoaded', function() {
-  function tryPreload() {
-    setTimeout(preloadPrevMonth, 500);
-  }
-  
-  if (window.umbrellaGateVerified) {
-    tryPreload();
-  } else {
-    document.addEventListener('umbrella-gate-verified', tryPreload, { once: true });
-  }
+    function tryPreload() {
+        setTimeout(preloadAllData, 100);
+    }
+    
+    // Jika gate sudah verified sebelum kas.js ter-load (race condition)
+    if (window.umbrellaGateVerified) {
+        tryPreload();
+    } else {
+        // Tunggu event dari gate.js
+        document.addEventListener('umbrella-gate-verified', tryPreload, { once: true });
+    }
 });

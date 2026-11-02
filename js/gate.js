@@ -30,6 +30,7 @@ async function checkGateStatus() {
   if (uUid && !sessionToken) {
     console.log('🔄 Migrasi: uid ada tanpa token, force re-gate');
     localStorage.removeItem('u_uid');
+    localStorage.removeItem('u_class');
     localStorage.removeItem('u_last_verify');
   }
   
@@ -334,7 +335,6 @@ if (data.success) {
 function saveMemberIdentity(uid) {
   // Update UID ke M-xxx dari GAS
   localStorage.setItem('u_uid', uid);
-  localStorage.setItem('u_class', 'member');
   
   // Update window.myUID (untuk sesi ini)
   if (typeof window !== 'undefined') {

@@ -162,6 +162,16 @@ function renderLaporan() {
     const mainContent = document.getElementById('mainContent');
     if (!mainContent) return;
 
+    // 🎯 CEK: Apakah laporan sudah dirender sebelumnya?
+    const existingPanel = document.getElementById('dualPanel');
+    if (existingPanel) {
+        console.log('♻️ [LAPORAN] Reuse existing DOM (instan)');
+        // Cukup refresh data (dari cache, instant)
+        loadData();
+        return;
+    }
+
+    console.log('🏗️ [LAPORAN] Render HTML pertama kali');
     const isWide = window.innerWidth >= 900;
 
     let html = `

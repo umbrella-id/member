@@ -204,10 +204,26 @@ function showGate() {
 // ==========================================
 // SEMBUNYIKAN GATE
 // ==========================================
+// 🎯 Flag untuk mencegah cascade (hideGate cukup sekali per sesi)
+let __gateHiddenOnce = false;
+
 function hideGate() {
   const gate = document.getElementById('internalGate');
   const mainContent = document.getElementById('mainContent');
   const menuFloat = document.querySelector('.menu-float');
+  
+  // 🎯 Guard: skip jika sudah pernah hide (cegah cascade)
+  if (__gateHiddenOnce) {
+    // Pastikan tetap tersembunyi (idempotent)
+    if (gate) {
+      gate.classList.remove('open');
+      gate.style.display = 'none';
+    }
+    if (mainContent) mainContent.style.display = 'flex';
+    if (menuFloat) menuFloat.style.display = 'flex';
+    return;
+  }
+  __gateHiddenOnce = true;
   
   if (gate) {
     gate.classList.remove('open');
@@ -218,6 +234,7 @@ function hideGate() {
   
   document.body.classList.remove('gate-active');
   
+  // ✅ buildMenu hanya dipanggil SEKALI per sesi
   if (typeof buildMenu === 'function') {
     buildMenu();
   }

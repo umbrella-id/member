@@ -87,9 +87,6 @@ function loadCrystaData(callback) {
                     if (mc) {
                         mc.innerHTML = '<div class="crysta-empty"><i class="fas fa-lock"></i><p>🔒 Sesi tidak valid. Silakan verifikasi ulang.</p></div>';
                     }
-                    setTimeout(function() {
-                        if (typeof checkGateStatus === 'function') checkGateStatus();
-                    }, 2000);
                 }
                 return;
             }

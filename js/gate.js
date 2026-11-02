@@ -280,7 +280,8 @@ async function submitGate() {
   console.log('📡 Verifikasi kode akses:', code);
   
   try {
-    const url = `${UM_CONFIG.GAS5_URL}?action=checkAccessCode&code=${encodeURIComponent(code)}`;
+    const userAgent = (navigator.userAgent || '').substring(0, 100);
+    const url = `${UM_CONFIG.GAS5_URL}?action=checkAccessCode&code=${encodeURIComponent(code)}&userAgent=${encodeURIComponent(userAgent)}`;
     const res = await fetch(url);
     const data = await res.json();
     

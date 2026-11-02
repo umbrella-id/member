@@ -73,7 +73,10 @@ function fetchKas(tahun, bulan) {
             return r.json();
         })
         .then(data => {
-            if (data.success) memCache.kas[key] = data;
+            if (data.success) {
+                memCache.kas[key] = data;
+                cacheTime.kas[key] = Date.now();  // 🎯 FIX: Set timestamp!
+            }
             delete inFlightKas[key];
             return data;
         })
@@ -95,7 +98,10 @@ function fetchHistory() {
             return r.json();
         })
         .then(data => {
-            if (data.success && data.data) memCache.history = data.data;
+            if (data.success && data.data) {
+                memCache.history = data.data;
+                cacheTime.history = Date.now();  // 🎯 FIX: Set timestamp!
+            }
             delete inFlightHistory;
             return data;
         })

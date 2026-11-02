@@ -158,20 +158,37 @@ function updateMonthLabel(data) {
 }
 
 // ==================== RENDER HTML LAPORAN ====================
+// 🎯 Cache HTML untuk restore instan
+let cachedLaporanHTML = null;
+
 function renderLaporan() {
     const mainContent = document.getElementById('mainContent');
     if (!mainContent) return;
 
-    // 🎯 CEK: Apakah laporan sudah dirender sebelumnya?
+    // Case 1: Sudah di halaman laporan (tidak pindah menu)
     const existingPanel = document.getElementById('dualPanel');
     if (existingPanel) {
-        console.log('♻️ [LAPORAN] Reuse existing DOM (instan)');
-        // Cukup refresh data (dari cache, instant)
+        console.log('♻️ [LAPORAN] Sudah di halaman laporan, refresh data saja');
         loadData();
         return;
     }
 
+    // Case 2: Balik dari Crysta/Event — restore dari cached HTML
+    if (cachedLaporanHTML) {
+        console.log('♻️ [LAPORAN] Restore dari cache HTML (instan)');
+        mainContent.innerHTML = cachedLaporanHTML;
+        initKasDOM();
+        applyPanelLayout();
+        loadData();
+        return;
+    }
+
+    // Case 3: Pertama kali — build HTML
     console.log('🏗️ [LAPORAN] Render HTML pertama kali');
+    buildLaporanHTML(mainContent);
+}
+
+function buildLaporanHTML(mainContent) {
     const isWide = window.innerWidth >= 900;
 
     let html = `
@@ -260,8 +277,15 @@ function renderLaporan() {
     `;
 
     mainContent.innerHTML = html;
+    cachedLaporanHTML = html;  // 🎯 Simpan untuk restore berikutnya
+    
     initKasDOM();
+    applyPanelLayout();
+    loadData();
+}
 
+function applyPanelLayout() {
+    const isWide = window.innerWidth >= 900;
     const panelKas = document.getElementById('panelKas');
     const panelHistory = document.getElementById('panelHistory');
     const tabSelector = document.getElementById('tabSelector');
@@ -278,8 +302,6 @@ function renderLaporan() {
         const kasBtn = document.querySelector('.tab-btn[data-tab="kas"]');
         if (kasBtn) kasBtn.classList.add('active');
     }
-
-    loadData();
 }
 
 // ==================== DOM REFS ====================
@@ -302,10 +324,19 @@ function initKasDOM() {
     loadingHistory = document.getElementById('loadingHistory');
 
     availableMonths = generateMonthList();
-    const last = availableMonths[availableMonths.length - 1];
-    currentTahun = last.tahun;
-    currentBulan = last.bulan;
-    if (monthLabel) monthLabel.textContent = last.label;
+    
+    // 🎯 Hanya set bulan default jika belum pernah di-set
+    if (!currentTahun || !currentBulan) {
+        const last = availableMonths[availableMonths.length - 1];
+        currentTahun = last.tahun;
+        currentBulan = last.bulan;
+    }
+    
+    // Set label sesuai bulan aktif
+    const activeIdx = availableMonths.findIndex(m => m.tahun === currentTahun && m.bulan === currentBulan);
+    if (activeIdx >= 0 && monthLabel) {
+        monthLabel.textContent = availableMonths[activeIdx].label;
+    }
 
     initKasEvents();
     initPopup();
@@ -970,14 +1001,14 @@ window.currentBulan = currentBulan;
 // ==================== INIT: PRELOAD SAAT GATE VERIFIED ====================
 document.addEventListener('DOMContentLoaded', function() {
     function tryPreload() {
+        console.log('🎯 [PRELOAD] Listener triggered');
         setTimeout(preloadAllData, 100);
     }
     
-    // Jika gate sudah verified sebelum kas.js ter-load (race condition)
     if (window.umbrellaGateVerified) {
+        console.log('🎯 [PRELOAD] Gate sudah verified sebelum listener — preload langsung');
         tryPreload();
     } else {
-        // Tunggu event dari gate.js
         document.addEventListener('umbrella-gate-verified', tryPreload, { once: true });
     }
 });

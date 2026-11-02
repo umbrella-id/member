@@ -463,6 +463,12 @@ function updateHeader(data) {
 
 // ==================== LOAD DATA ====================
 async function loadData() {
+    // 🎯 Guard di atas: skip kalau fetch sedang berjalan
+    if (isFetching) {
+        console.log('⏳ [LOAD] Fetch in progress, skip redundant call');
+        return;
+    }
+    
     const key = currentTahun + '-' + currentBulan;
     const cached = getCache(key);
 
@@ -479,7 +485,6 @@ async function loadData() {
 
     loadHistory();
 
-    if (isFetching) return;
     isFetching = true;
 
     try {

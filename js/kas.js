@@ -644,132 +644,135 @@ function renderHistory(data) {
 
 // ==================== POPUP DETAIL ====================
 function initPopup() {
-    if (!document.getElementById('popupOverlay')) {
-        const popupHTML = `
-            <div class="popup-overlay" id="popupOverlay">
-                <div class="popup-content">
-                    <button class="popup-close" id="popupClose"><i class="fas fa-times"></i></button>
-                    <div class="popup-title">📝 Detail Transaksi</div>
-                    <div class="popup-ign" id="popupIgn">-</div>
-                    <hr class="popup-divider" />
-                    <div class="popup-row">
-                        <span class="label">📅 Tanggal</span>
-                        <span class="value" id="popupDate">-</span>
-                    </div>
-                    <div class="popup-row">
-                        <span class="label">💰 Jumlah</span>
-                        <span class="value" id="popupAmount">-</span>
-                    </div>
-                    <div class="popup-row">
-                        <span class="label">👤 Admin</span>
-                        <span class="value" id="popupAdmin">-</span>
-                    </div>
-                    <hr class="popup-divider" />
-                    <div class="popup-title" style="font-size:11px; margin-bottom:6px;">📋 Catatan</div>
-                    <div class="popup-notes" id="popupNotes">-</div>
+    // 🎯 Skip jika popup sudah ada (cegah duplicate event listener)
+    if (document.getElementById('popupOverlay')) {
+        return;
+    }
+    
+    const popupHTML = `
+        <div class="popup-overlay" id="popupOverlay">
+            <div class="popup-content">
+                <button class="popup-close" id="popupClose"><i class="fas fa-times"></i></button>
+                <div class="popup-title">📝 Detail Transaksi</div>
+                <div class="popup-ign" id="popupIgn">-</div>
+                <hr class="popup-divider" />
+                <div class="popup-row">
+                    <span class="label">📅 Tanggal</span>
+                    <span class="value" id="popupDate">-</span>
                 </div>
+                <div class="popup-row">
+                    <span class="label">💰 Jumlah</span>
+                    <span class="value" id="popupAmount">-</span>
+                </div>
+                <div class="popup-row">
+                    <span class="label">👤 Admin</span>
+                    <span class="value" id="popupAdmin">-</span>
+                </div>
+                <hr class="popup-divider" />
+                <div class="popup-title" style="font-size:11px; margin-bottom:6px;">📋 Catatan</div>
+                <div class="popup-notes" id="popupNotes">-</div>
             </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', popupHTML);
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', popupHTML);
+}
+
+const popupOverlay = document.getElementById('popupOverlay');
+const popupClose = document.getElementById('popupClose');
+const popupIgn = document.getElementById('popupIgn');
+const popupDate = document.getElementById('popupDate');
+const popupAmount = document.getElementById('popupAmount');
+const popupAdmin = document.getElementById('popupAdmin');
+const popupNotes = document.getElementById('popupNotes');
+let popupHistory = [];
+
+function closePopup() {
+    if (popupOverlay) popupOverlay.classList.remove('active');
+    
+    if (window.setDetailPopupOpen) {
+        window.setDetailPopupOpen(false);
     }
-
-    const popupOverlay = document.getElementById('popupOverlay');
-    const popupClose = document.getElementById('popupClose');
-    const popupIgn = document.getElementById('popupIgn');
-    const popupDate = document.getElementById('popupDate');
-    const popupAmount = document.getElementById('popupAmount');
-    const popupAdmin = document.getElementById('popupAdmin');
-    const popupNotes = document.getElementById('popupNotes');
-    let popupHistory = [];
-
-    function closePopup() {
-        if (popupOverlay) popupOverlay.classList.remove('active');
-        
-        if (window.setDetailPopupOpen) {
-            window.setDetailPopupOpen(false);
-        }
-        
-        if (popupHistory.length > 0) {
-            popupHistory.pop();
-            if (popupHistory.length === 0) {
-                history.replaceState(null, null, ' ');
-            }
+    
+    if (popupHistory.length > 0) {
+        popupHistory.pop();
+        if (popupHistory.length === 0) {
+            history.replaceState(null, null, ' ');
         }
     }
+}
 
-    function openPopup(item) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        const date = new Date(item.date);
-        const dateStr = String(date.getDate()).padStart(2, '0') + '-' +
-            months[date.getMonth()] + '-' +
-            String(date.getFullYear()).slice(-2);
+function openPopup(item) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const date = new Date(item.date);
+    const dateStr = String(date.getDate()).padStart(2, '0') + '-' +
+        months[date.getMonth()] + '-' +
+        String(date.getFullYear()).slice(-2);
 
-        const spina = item.spina || 0;
-        const spinaClass = spina >= 0 ? 'positive' : 'negative';
-        const spinaFormatted = (spina >= 0 ? '+' : '') + formatSpinaRaw(spina) + ' S';
+    const spina = item.spina || 0;
+    const spinaClass = spina >= 0 ? 'positive' : 'negative';
+    const spinaFormatted = (spina >= 0 ? '+' : '') + formatSpinaRaw(spina) + ' S';
 
-        if (popupIgn) popupIgn.textContent = item.ign || '-';
-        if (popupDate) popupDate.textContent = dateStr;
-        if (popupAmount) {
-            popupAmount.textContent = spinaFormatted;
-            popupAmount.className = 'value ' + spinaClass;
-        }
-        if (popupAdmin) popupAdmin.textContent = item.adm || '-';
-        if (popupNotes) popupNotes.textContent = item.notes || 'Tidak ada catatan';
-
-        if (popupOverlay) popupOverlay.classList.add('active');
-        
-        if (window.setDetailPopupOpen) {
-            window.setDetailPopupOpen(true);
-        }
-        
-        popupHistory.push('popup');
-        history.pushState({ popup: true }, null, '#popup');
+    if (popupIgn) popupIgn.textContent = item.ign || '-';
+    if (popupDate) popupDate.textContent = dateStr;
+    if (popupAmount) {
+        popupAmount.textContent = spinaFormatted;
+        popupAmount.className = 'value ' + spinaClass;
     }
+    if (popupAdmin) popupAdmin.textContent = item.adm || '-';
+    if (popupNotes) popupNotes.textContent = item.notes || 'Tidak ada catatan';
 
-    if (popupClose) popupClose.addEventListener('click', closePopup);
-    if (popupOverlay) {
-        popupOverlay.addEventListener('click', function(e) {
-            if (e.target === this) closePopup();
-        });
+    if (popupOverlay) popupOverlay.classList.add('active');
+    
+    if (window.setDetailPopupOpen) {
+        window.setDetailPopupOpen(true);
     }
+    
+    popupHistory.push('popup');
+    history.pushState({ popup: true }, null, '#popup');
+}
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && popupOverlay && popupOverlay.classList.contains('active')) {
-            closePopup();
-        }
-    });
-
-    window.openPopup = openPopup;
-    window.closePopup = closePopup;
-
-    document.addEventListener('click', function(e) {
-        const row = e.target.closest('#historyBody tr');
-        if (row) {
-            const cells = row.querySelectorAll('td');
-            if (cells.length >= 5) {
-                const item = {
-                    date: cells[0].textContent.trim(),
-                    ign: cells[1].textContent.trim(),
-                    spina: parseFloat(cells[2].textContent.replace(/[^0-9\-]/g, '')) || 0,
-                    notes: cells[3].textContent.trim(),
-                    adm: cells[4].textContent.trim()
-                };
-
-                const parts = item.date.split('-');
-                if (parts.length === 3) {
-                    const monthMap = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Mei': 4, 'Jun': 5, 'Jul': 6, 'Agu': 7, 'Sep': 8, 'Okt': 9, 'Nov': 10, 'Des': 11 };
-                    const year = 2000 + parseInt(parts[2]);
-                    const month = monthMap[parts[1]] || 0;
-                    const day = parseInt(parts[0]);
-                    item.date = new Date(year, month, day).toISOString();
-                }
-
-                if (window.openPopup) window.openPopup(item);
-            }
-        }
+if (popupClose) popupClose.addEventListener('click', closePopup);
+if (popupOverlay) {
+    popupOverlay.addEventListener('click', function(e) {
+        if (e.target === this) closePopup();
     });
 }
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && popupOverlay && popupOverlay.classList.contains('active')) {
+        closePopup();
+    }
+});
+
+window.openPopup = openPopup;
+window.closePopup = closePopup;
+
+document.addEventListener('click', function(e) {
+    const row = e.target.closest('#historyBody tr');
+    if (row) {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+            const item = {
+                date: cells[0].textContent.trim(),
+                ign: cells[1].textContent.trim(),
+                spina: parseFloat(cells[2].textContent.replace(/[^0-9\-]/g, '')) || 0,
+                notes: cells[3].textContent.trim(),
+                adm: cells[4].textContent.trim()
+            };
+
+            const parts = item.date.split('-');
+            if (parts.length === 3) {
+                const monthMap = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Mei': 4, 'Jun': 5, 'Jul': 6, 'Agu': 7, 'Sep': 8, 'Okt': 9, 'Nov': 10, 'Des': 11 };
+                const year = 2000 + parseInt(parts[2]);
+                const month = monthMap[parts[1]] || 0;
+                const day = parseInt(parts[0]);
+                item.date = new Date(year, month, day).toISOString();
+            }
+
+            if (window.openPopup) window.openPopup(item);
+        }
+    }
+});
 
 // ==================== SEARCH ====================
 function applySearch() {

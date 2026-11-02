@@ -644,9 +644,8 @@ function renderHistory(data) {
 
 // ==================== POPUP DETAIL ====================
 function initPopup() {
-    // 🎯 Skip jika popup sudah ada (cegah duplicate event listener)
     if (document.getElementById('popupOverlay')) {
-        return;
+        return;  // sudah ada, skip
     }
     
     const popupHTML = `
@@ -675,23 +674,33 @@ function initPopup() {
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', popupHTML);
+    
+    // 🎯 Query refs SETELAH popup dibuat
+    const popupClose = document.getElementById('popupClose');
+    const popupOverlay = document.getElementById('popupOverlay');
+    
+    if (popupClose) popupClose.addEventListener('click', closePopup);
+    if (popupOverlay) {
+        popupOverlay.addEventListener('click', function(e) {
+            if (e.target === this) closePopup();
+        });
+    }
+    
+    document.addEventListener('keydown', function(e) {
+        const overlay = document.getElementById('popupOverlay');
+        if (e.key === 'Escape' && overlay && overlay.classList.contains('active')) {
+            closePopup();
+        }
+    });
 }
 
-const popupOverlay = document.getElementById('popupOverlay');
-const popupClose = document.getElementById('popupClose');
-const popupIgn = document.getElementById('popupIgn');
-const popupDate = document.getElementById('popupDate');
-const popupAmount = document.getElementById('popupAmount');
-const popupAdmin = document.getElementById('popupAdmin');
-const popupNotes = document.getElementById('popupNotes');
 let popupHistory = [];
 
 function closePopup() {
+    const popupOverlay = document.getElementById('popupOverlay');
     if (popupOverlay) popupOverlay.classList.remove('active');
     
-    if (window.setDetailPopupOpen) {
-        window.setDetailPopupOpen(false);
-    }
+    if (window.setDetailPopupOpen) window.setDetailPopupOpen(false);
     
     if (popupHistory.length > 0) {
         popupHistory.pop();
@@ -712,6 +721,14 @@ function openPopup(item) {
     const spinaClass = spina >= 0 ? 'positive' : 'negative';
     const spinaFormatted = (spina >= 0 ? '+' : '') + formatSpinaRaw(spina) + ' S';
 
+    // Query refs fresh
+    const popupIgn = document.getElementById('popupIgn');
+    const popupDate = document.getElementById('popupDate');
+    const popupAmount = document.getElementById('popupAmount');
+    const popupAdmin = document.getElementById('popupAdmin');
+    const popupNotes = document.getElementById('popupNotes');
+    const popupOverlay = document.getElementById('popupOverlay');
+
     if (popupIgn) popupIgn.textContent = item.ign || '-';
     if (popupDate) popupDate.textContent = dateStr;
     if (popupAmount) {
@@ -723,30 +740,16 @@ function openPopup(item) {
 
     if (popupOverlay) popupOverlay.classList.add('active');
     
-    if (window.setDetailPopupOpen) {
-        window.setDetailPopupOpen(true);
-    }
+    if (window.setDetailPopupOpen) window.setDetailPopupOpen(true);
     
     popupHistory.push('popup');
     history.pushState({ popup: true }, null, '#popup');
 }
 
-if (popupClose) popupClose.addEventListener('click', closePopup);
-if (popupOverlay) {
-    popupOverlay.addEventListener('click', function(e) {
-        if (e.target === this) closePopup();
-    });
-}
-
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && popupOverlay && popupOverlay.classList.contains('active')) {
-        closePopup();
-    }
-});
-
 window.openPopup = openPopup;
 window.closePopup = closePopup;
 
+// Event delegation klik history row
 document.addEventListener('click', function(e) {
     const row = e.target.closest('#historyBody tr');
     if (row) {

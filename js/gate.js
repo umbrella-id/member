@@ -26,25 +26,25 @@ async function checkGateStatus() {
   const lastVerify = parseInt(sessionStorage.getItem('u_last_verify') || '0');
   const CACHE_MS = 5 * 60 * 1000;
   
-  // BARU: migrasi — uid ada tapi token tidak ada → force re-gate
   if (uUid && !sessionToken) {
     console.log('🔄 Migrasi: uid ada tanpa token, force re-gate');
     localStorage.removeItem('u_uid');
-    localStorage.removeItem('u_class');
     localStorage.removeItem('u_last_verify');
+    localStorage.removeItem('u_class');
     sessionStorage.removeItem('u_last_verify');
   }
   
   if (uUid && sessionToken && (Date.now() - lastVerify) < CACHE_MS) {
     console.log('⚡ Verified < 5 menit — skip fetch');
     hideGate();
+    window.umbrellaGateVerified = true;
+    document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));  // 🎯 FIX
     setTimeout(() => {
       sessionStorage.setItem('u_last_verify', Date.now().toString());
     }, 100);
     return true;
   }
   
-  // Load pertanyaan paralel (Layer 2 sebelumnya)
   const questionPromise = loadGateQuestion();
   
   if (!uUid) {
@@ -76,7 +76,7 @@ async function checkGateStatus() {
       sessionStorage.setItem('u_last_verify', Date.now().toString());
       hideGate();
       window.umbrellaGateVerified = true;
-      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
+      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));  // 🎯 FIX
       return true;
     } else {
       localStorage.removeItem('u_uid');
@@ -94,7 +94,7 @@ async function checkGateStatus() {
         sessionStorage.setItem('u_last_verify', Date.now().toString());
         hideGate();
         window.umbrellaGateVerified = true;
-        document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
+        document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));  // 🎯 FIX
         return true;
       }
     }
@@ -104,7 +104,7 @@ async function checkGateStatus() {
       sessionStorage.setItem('u_last_verify', Date.now().toString());
       hideGate();
       window.umbrellaGateVerified = true;
-      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
+      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));  // 🎯 FIX
       return true;
     }
     

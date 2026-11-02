@@ -1,7 +1,5 @@
 // ==================== KONFIGURASI ====================
 // URL & API key dari config.js (UM_CONFIG)
-const CACHE_KEY = 'kas_data';
-const CACHE_KEY_HISTORY = 'kas_history';
 const START_YEAR = 2025;
 const START_MONTH = 6;
 

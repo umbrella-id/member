@@ -1,10 +1,3 @@
-// ==================== STATE ====================
-var crystaRawData = [];
-var isDataLoaded = false;
-var currentFilter = 'all';
-var searchKeyword = '';
-var isRendering = false;
-
 // ==================== KONFIGURASI ====================
 var CRYSTA_CACHE_KEY = 'crysta_data';
 var CRYSTA_CACHE_EXPIRY = 24 * 60 * 60 * 1000;
@@ -36,27 +29,23 @@ var TYPE_OPTIONS = [
     { value: 'normal', label: 'Normal' }
 ];
 
-// ==================== CACHE ====================
+// ==================== STATE ====================
+var crystaRawData = [];
+var isDataLoaded = false;
+var currentFilter = 'all';
+var searchKeyword = '';
+var isRendering = false;
+
+// ==================== IN-MEMORY CACHE ====================
+// Tidak ada persistensi. Hilang saat refresh (wajar).
+let crystaMemCache = null;
+
 function getCrystaCache() {
-    try {
-        var raw = localStorage.getItem(CRYSTA_CACHE_KEY);
-        if (!raw) return null;
-        var data = JSON.parse(raw);
-        if (Date.now() - data.timestamp > CRYSTA_CACHE_EXPIRY) {
-            localStorage.removeItem(CRYSTA_CACHE_KEY);
-            return null;
-        }
-        return data.value;
-    } catch (e) { return null; }
+    return crystaMemCache;
 }
 
 function setCrystaCache(value) {
-    try {
-        localStorage.setItem(CRYSTA_CACHE_KEY, JSON.stringify({
-            timestamp: Date.now(),
-            value: value
-        }));
-    } catch (e) { /* ignore */ }
+    crystaMemCache = value;
 }
 
 // ==================== LOAD CRYSTA DATA ====================

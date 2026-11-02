@@ -141,7 +141,7 @@ async function verifyMemberBackground() {
   if (!uUid) return;
   
   // Throttle 5 menit
-  const lastCheck = parseInt( || '0');
+  const lastCheck = parseInt(sessionStorage.getItem('u_last_verify') || '0');
   if (Date.now() - lastCheck < 5 * 60 * 1000) {
     console.log('⏭️ Skip verifikasi (baru < 5 menit)');
     return;

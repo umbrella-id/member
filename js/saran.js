@@ -1,13 +1,21 @@
 // ==================== KONFIGURASI SARAN ====================
 var GAS_MAIL_URL = "https://script.google.com/macros/s/AKfycbyv6cBEWlT9JsprJqdRVG2EiqRYrNlyu6uHxH6xuFG9PRXSwkO6aKi8-EHXm99puRQX/exec";
 
-// ==================== STATE SARAN ====================
 var isSendingSaran = false;
-var myUID = localStorage.getItem('u_uid_saran');
-if (!myUID) {
-    myUID = 'SARAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
-    localStorage.setItem('u_uid_saran', myUID);
-}
+
+// ==========================================
+// 🧹 MIGRASI: Hapus u_uid_saran dari localStorage
+// (sekarang in-memory per sesi)
+// ==========================================
+(function migrateSaranUID() {
+    if (localStorage.getItem('u_uid_saran')) {
+        localStorage.removeItem('u_uid_saran');
+        console.log('🧹 Migrasi: u_uid_saran dihapus dari localStorage');
+    }
+})();
+var myUID = 'SARAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+console.log('📝 Saran UID (session):', myUID);
+
 var saranPopupHistory = [];
 
 // ==================== RENDER SARAN ====================

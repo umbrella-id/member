@@ -75,6 +75,8 @@ async function checkGateStatus() {
       console.log('✅ Tipe member valid → masuk');
       sessionStorage.setItem('u_last_verify', Date.now().toString());
       hideGate();
+      window.umbrellaGateVerified = true;
+      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
       return true;
     } else {
       localStorage.removeItem('u_uid');
@@ -91,6 +93,8 @@ async function checkGateStatus() {
       if (uUid) {
         sessionStorage.setItem('u_last_verify', Date.now().toString());
         hideGate();
+        window.umbrellaGateVerified = true;
+        document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
         return true;
       }
     }
@@ -99,6 +103,8 @@ async function checkGateStatus() {
       console.log('⚠️ Koneksi error, fail open');
       sessionStorage.setItem('u_last_verify', Date.now().toString());
       hideGate();
+      window.umbrellaGateVerified = true;
+      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
       return true;
     }
     

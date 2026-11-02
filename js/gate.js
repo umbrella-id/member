@@ -288,25 +288,29 @@ async function submitGate() {
     
     console.log('📡 Response:', data);
     
-if (data.success) {
-  saveMemberIdentity(data.uid);
-  localStorage.setItem('u_last_verify', Date.now().toString()); 
-  
-  // BARU: simpan session token
-  if (data.sessionToken) {
-    localStorage.setItem('umbrella_session_token', data.sessionToken);
-    console.log('🔑 Session token tersimpan');
-  }
-  
-  showGateMessage('✅ Verifikasi berhasil!', false, true);
-  
-  setTimeout(() => {
-    hideGate();
-    if (typeof navigateToPage === 'function') {
-      navigateToPage('laporan');
+  if (data.success) {
+    saveMemberIdentity(data.uid);
+    localStorage.setItem('u_last_verify', Date.now().toString()); 
+    
+    if (data.sessionToken) {
+      localStorage.setItem('umbrella_session_token', data.sessionToken);
+      console.log('🔑 Session token tersimpan');
     }
-  }, 800);
-} else {
+    
+    showGateMessage('✅ Verifikasi berhasil!', false, true);
+    
+    // 🎯 PRELOAD: Dispatch event agar modul lain bisa warm-up cache
+    window.umbrellaGateVerified = true;
+    document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
+    console.log('📢 Event umbrella-gate-verified dispatched');
+    
+    setTimeout(() => {
+      hideGate();
+      if (typeof navigateToPage === 'function') {
+        navigateToPage('laporan');
+      }
+    }, 800);
+  } else {
       // BARU: hitung gagal
       const fail = recordGateFail();
       

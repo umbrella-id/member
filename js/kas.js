@@ -448,7 +448,7 @@ async function loadData() {
 }
 
 // ==================== LOAD DATA NAVIGASI ====================
-function loadDataNavigation() {
+async function loadDataNavigation() {
     const key = currentTahun + '-' + currentBulan;
     const cached = getCache(key);
 
@@ -466,32 +466,31 @@ function loadDataNavigation() {
     console.log('⏳ NAVIGASI: Tidak ada cache untuk ' + key + ', fetch dari server');
     showSkeleton(30);
     
-    const url = buildKasUrl('getMonthlyTable', { tahun: currentTahun, bulan: currentBulan });
-    fetch(url)
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(data => {
-            // 🆕 Handle error Unauthorized
-            if (data.error && data.error.indexOf('Unauthorized') !== -1) {
-                console.warn('🔒 Unauthorized — UID invalid');
-                showError('Sesi Anda tidak valid. Silakan verifikasi ulang.');
-                isNavigating = false;
-                setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
-                return;
-            }
-            
-            if (data.success) {
-                setCache(key, data);
-                console.log('🔄 NAVIGASI: Data dari server untuk ' + key);
-                renderTable(data);
-                updateHeader(data);
-                updateMonthLabel(data);
-                updateNavButtons();
-                hideSkeleton();
-            } else {
-                showError(data.error || 'Gagal memuat data');
-            }
+    try {
+        const data = await fetchKas(currentTahun, currentBulan);
+        
+        if (data.error && data.error.indexOf('Unauthorized') !== -1) {
+            showError('Sesi Anda tidak valid. Silakan verifikasi ulang.');
             isNavigating = false;
-        })
+            setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
+            return;
+        }
+        
+        if (data.success) {
+            renderTable(data);
+            updateHeader(data);
+            updateMonthLabel(data);
+            updateNavButtons();
+            hideSkeleton();
+        } else {
+            showError(data.error || 'Gagal memuat data');
+        }
+    } catch(e) {
+        console.error('Navigation fetch error:', e);
+        showError('Koneksi gagal');
+    } finally {
+        isNavigating = false;
+    }
 }
 
 // ==================== HISTORY ====================
@@ -934,18 +933,6 @@ async function preloadAllData() {
 // Expose untuk dipanggil dari gate.js
 window.preloadAllData = preloadAllData;
 
-// ==================== INIT PRELOAD ====================
-document.addEventListener('DOMContentLoaded', function() {
-    // Jika gate sudah verified sebelum listener terpasang (race condition),
-    // atau tunggu event dari gate.js
-    if (window.umbrellaGateVerified) {
-        setTimeout(preloadAllData, 100);
-    } else {
-        document.addEventListener('umbrella-gate-verified', function() {
-            setTimeout(preloadAllData, 100);
-        }, { once: true });
-    }
-});
 
 // ==================== EXPOSE ====================
 window.renderLaporan = renderLaporan;

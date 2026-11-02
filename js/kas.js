@@ -493,7 +493,8 @@ async function loadData() {
         if (data.error && data.error.indexOf('Unauthorized') !== -1) {
             if (!cached) showError('Sesi Anda tidak valid. Silakan verifikasi ulang.');
             isFetching = false;
-            setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
+            // 🎯 TIDAK schedule checkGateStatus — cegah cascade.
+            // Gate sudah akan ditampilkan via reload atau interaksi user berikutnya.
             return;
         }
         
@@ -538,7 +539,6 @@ async function loadDataNavigation() {
         if (data.error && data.error.indexOf('Unauthorized') !== -1) {
             showError('Sesi Anda tidak valid. Silakan verifikasi ulang.');
             isNavigating = false;
-            setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
             return;
         }
         
@@ -589,7 +589,6 @@ async function loadHistory() {
             }
             if (historyContainer) historyContainer.style.display = 'block';
             historyRendered = true;
-            setTimeout(() => { if (typeof checkGateStatus === 'function') checkGateStatus(); }, 2000);
             return;
         }
         

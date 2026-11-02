@@ -17,28 +17,44 @@ let isFetchingHistory = false;
 let historyRendered = false;
 let isNavigating = false;
 
-// ==================== IN-MEMORY CACHE ====================
-// Tidak disimpan di localStorage/sessionStorage.
-// Hilang saat refresh (wajar). Di-warm-up dari preload saat gate verify.
-
+// ==================== IN-MEMORY CACHE (dengan TTL) ====================
 const memCache = { kas: {}, history: null };
+const cacheTime = { kas: {}, history: 0 };
 const inFlightKas = {};
 let inFlightHistory = null;
 
+const CACHE_TTL_MS = 5 * 60 * 1000;  // 5 menit
+
 function getCache(key) {
-    return memCache.kas[key] || null;
+    if (!memCache.kas[key]) return null;
+    const age = Date.now() - (cacheTime.kas[key] || 0);
+    if (age > CACHE_TTL_MS) {
+        delete memCache.kas[key];
+        delete cacheTime.kas[key];
+        return null;
+    }
+    return memCache.kas[key];
 }
 
 function setCache(key, value) {
     memCache.kas[key] = value;
+    cacheTime.kas[key] = Date.now();
 }
 
 function getHistoryCache() {
+    if (!memCache.history) return null;
+    const age = Date.now() - (cacheTime.history || 0);
+    if (age > CACHE_TTL_MS) {
+        memCache.history = null;
+        cacheTime.history = 0;
+        return null;
+    }
     return memCache.history;
 }
 
 function setHistoryCache(value) {
     memCache.history = value;
+    cacheTime.history = Date.now();
 }
 
 // ==================== DEDUPLICATED FETCH ====================

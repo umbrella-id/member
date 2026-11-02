@@ -23,7 +23,7 @@
 async function checkGateStatus() {
   const uUid = localStorage.getItem('u_uid') || '';
   const sessionToken = localStorage.getItem('umbrella_session_token') || '';
-  const lastVerify = parseInt(localStorage.getItem('u_last_verify') || '0');
+  const lastVerify = parseInt(sessionStorage.getItem('u_last_verify') || '0');
   const CACHE_MS = 5 * 60 * 1000;
   
   // BARU: migrasi — uid ada tapi token tidak ada → force re-gate
@@ -32,13 +32,14 @@ async function checkGateStatus() {
     localStorage.removeItem('u_uid');
     localStorage.removeItem('u_class');
     localStorage.removeItem('u_last_verify');
+    sessionStorage.removeItem('u_last_verify');
   }
   
   if (uUid && sessionToken && (Date.now() - lastVerify) < CACHE_MS) {
     console.log('⚡ Verified < 5 menit — skip fetch');
     hideGate();
     setTimeout(() => {
-      localStorage.setItem('u_last_verify', Date.now().toString());
+      sessionStorage.setItem('u_last_verify', Date.now().toString());
     }, 100);
     return true;
   }
@@ -64,7 +65,7 @@ async function checkGateStatus() {
     
     if (data.error && data.error.indexOf('Unauthorized') !== -1) {
       localStorage.removeItem('u_uid');
-      localStorage.removeItem('u_last_verify');
+      sessionStorage.removeItem('u_last_verify');
       await questionPromise;
       showGate();
       return false;
@@ -72,12 +73,12 @@ async function checkGateStatus() {
     
     if (data.success && data.type === 'member' && data.valid === true) {
       console.log('✅ Tipe member valid → masuk');
-      localStorage.setItem('u_last_verify', Date.now().toString());
+      sessionStorage.setItem('u_last_verify', Date.now().toString());
       hideGate();
       return true;
     } else {
       localStorage.removeItem('u_uid');
-      localStorage.removeItem('u_last_verify');
+      sessionStorage.removeItem('u_last_verify');
       await questionPromise;
       showGate();
       return false;
@@ -88,7 +89,7 @@ async function checkGateStatus() {
     if (e.name === 'AbortError') {
       console.warn('⏰ Timeout cek UID (10s) — fail open');
       if (uUid) {
-        localStorage.setItem('u_last_verify', Date.now().toString());
+        sessionStorage.setItem('u_last_verify', Date.now().toString());
         hideGate();
         return true;
       }
@@ -96,7 +97,7 @@ async function checkGateStatus() {
     
     if (uUid) {
       console.log('⚠️ Koneksi error, fail open');
-      localStorage.setItem('u_last_verify', Date.now().toString());
+      sessionStorage.setItem('u_last_verify', Date.now().toString());
       hideGate();
       return true;
     }
@@ -140,7 +141,7 @@ async function verifyMemberBackground() {
   if (!uUid) return;
   
   // Throttle 5 menit
-  const lastCheck = parseInt(localStorage.getItem('u_last_verify') || '0');
+  const lastCheck = parseInt( || '0');
   if (Date.now() - lastCheck < 5 * 60 * 1000) {
     console.log('⏭️ Skip verifikasi (baru < 5 menit)');
     return;
@@ -151,14 +152,14 @@ async function verifyMemberBackground() {
     const res = await fetch(url);
     const data = await res.json();
     
-    localStorage.setItem('u_last_verify', Date.now().toString());
+    sessionStorage.setItem('u_last_verify', Date.now().toString());
     
     if (data.success && data.type === 'member' && data.valid === true) {
       console.log('✅ Verifikasi background: masih valid');
     } else {
       console.log('🔴 Verifikasi background: tidak valid — logout');
       localStorage.removeItem('u_uid');
-      localStorage.removeItem('u_last_verify');
+      sessionStorage.removeItem('u_last_verify');
       await loadGateQuestion();
       showGate();
       // Reload biar bersih
@@ -290,7 +291,7 @@ async function submitGate() {
     
   if (data.success) {
     saveMemberIdentity(data.uid);
-    localStorage.setItem('u_last_verify', Date.now().toString()); 
+    sessionStorage.setItem('u_last_verify', Date.now().toString()); 
     
     if (data.sessionToken) {
       localStorage.setItem('umbrella_session_token', data.sessionToken);

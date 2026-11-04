@@ -86,31 +86,16 @@ async function checkGateStatus() {
       return false;
     }
   } catch (e) {
-    clearTimeout(timeoutId);
-    
-    if (e.name === 'AbortError') {
-      console.warn('⏰ Timeout cek UID (10s) — fail open');
-      if (uUid) {
-        sessionStorage.setItem('u_last_verify', Date.now().toString());
-        hideGate();
-        window.umbrellaGateVerified = true;
-        document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));  // 🎯 FIX
-        return true;
-      }
-    }
-    
-    if (uUid) {
-      console.log('⚠️ Koneksi error, fail open');
-      sessionStorage.setItem('u_last_verify', Date.now().toString());
-      hideGate();
-      window.umbrellaGateVerified = true;
-      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));  // 🎯 FIX
-      return true;
-    }
-    
-    await questionPromise;
-    showGate();
-    return false;
+      clearTimeout(timeoutId);
+      console.error('❌ Gagal verifikasi (Timeout/Network):', e);
+      
+      // 🎯 FAIL-CLOSED: Jangan buka gate jika server tidak bisa dihubungi
+      await questionPromise;
+      showGate();
+      
+      // Tampilkan pesan error di layar gate
+      showGateMessage('Gagal terhubung ke server. Periksa koneksi internet Anda.', true);
+      return false;
   }
 }
 
@@ -172,7 +157,9 @@ async function verifyMemberBackground() {
       setTimeout(() => location.reload(), 1500);
     }
   } catch(e) {
-    console.log('⚠️ Verifikasi background error (fail open):', e);
+      console.warn('⚠️ Verifikasi background gagal (jaringan):', e);
+      // Cukup log, jangan tendang user jika hanya masalah jaringan sesaat
+      // Gate utama tetap aman karena sudah Fail-Closed saat awal load
   }
 }
 

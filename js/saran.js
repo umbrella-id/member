@@ -1,21 +1,6 @@
 // ==================== KONFIGURASI SARAN ====================
-var GAS_MAIL_URL = "https://script.google.com/macros/s/AKfycbyv6cBEWlT9JsprJqdRVG2EiqRYrNlyu6uHxH6xuFG9PRXSwkO6aKi8-EHXm99puRQX/exec";
 
 var isSendingSaran = false;
-
-// ==========================================
-// 🧹 MIGRASI: Hapus u_uid_saran dari localStorage
-// (sekarang in-memory per sesi)
-// ==========================================
-(function migrateSaranUID() {
-    if (localStorage.getItem('u_uid_saran')) {
-        localStorage.removeItem('u_uid_saran');
-        console.log('🧹 Migrasi: u_uid_saran dihapus dari localStorage');
-    }
-})();
-var myUID = 'SARAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
-console.log('📝 Saran UID (session):', myUID);
-
 var saranPopupHistory = [];
 
 // ==================== RENDER SARAN ====================
@@ -159,19 +144,25 @@ function initSaranEvents() {
         toast.innerText = msg;
         toast.style.borderColor = isError ? '#ff4444' : '#a855f7';
         toast.classList.add('show');
-        setTimeout(function() {
-            toast.classList.remove('show');
-        }, 3000);
+        setTimeout(function() { toast.classList.remove('show'); }, 3000);
     }
 
     function sendSaran() {
         if (isSendingSaran) return;
 
         var pesan = messageEl.value.trim();
-
         if (!pesan) {
             showToastSaran('⚠️ Pesan tidak boleh kosong!', true);
             messageEl.focus();
+            return;
+        }
+
+        // Validasi session
+        var uid = localStorage.getItem('u_uid') || '';
+        var token = localStorage.getItem('umbrella_session_token') || '';
+        
+        if (!uid || !token) {
+            showToastSaran('⚠️ Sesi tidak valid. Muat ulang halaman.', true);
             return;
         }
 
@@ -179,14 +170,20 @@ function initSaranEvents() {
         sendBtn.disabled = true;
         sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MENGIRIM...';
 
-        var kategori = 'Saran';
-        var url = GAS_MAIL_URL + '?uid=' + encodeURIComponent(myUID) + '&ign=Member&msg=' + encodeURIComponent(pesan) + '&category=' + encodeURIComponent(kategori) + '&type=mail';
-
-        fetch(url)
+        fetch(UM_CONFIG.GAS5_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'submitSaran',
+                uid: uid,
+                token: token,
+                message: pesan
+            })
+        })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.status === 'success') {
-                    showToastSaran('✅ Surat berhasil dikirim! Terima kasih.');
+                    showToastSaran('✅ Saran terkirim. Terima kasih.');
                     setTimeout(function() {
                         resetSaranForm();
                         closeSaran();
@@ -194,8 +191,13 @@ function initSaranEvents() {
                         sendBtn.disabled = false;
                         isSendingSaran = false;
                     }, 1000);
+                } else if (data.status === 'rate_limited') {
+                    showToastSaran('⚠️ ' + (data.message || 'Terlalu banyak permintaan.'), true);
+                    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
+                    sendBtn.disabled = false;
+                    isSendingSaran = false;
                 } else {
-                    showToastSaran('⚠️ Gagal: ' + (data.message || 'Sistem error'), true);
+                    showToastSaran('⚠️ ' + (data.message || 'Gagal mengirim'), true);
                     sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
                     sendBtn.disabled = false;
                     isSendingSaran = false;
@@ -221,7 +223,7 @@ function initSaranEvents() {
         });
     }
 
-    console.log("✅ Kotak Saran terintegrasi");
+    console.log("✅ Kotak Saran terintegrasi (GAS5)");
 }
 
 // ==================== EXPOSE ====================

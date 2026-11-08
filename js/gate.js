@@ -293,8 +293,15 @@ async function submitGate() {
   
   try {
     const userAgent = (navigator.userAgent || '').substring(0, 100);
-    const url = `${UM_CONFIG.GAS5_URL}?action=checkAccessCode&code=${encodeURIComponent(code)}&userAgent=${encodeURIComponent(userAgent)}`;
-    const res = await fetch(url);
+    const res = await fetch(UM_CONFIG.GAS5_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ 
+        action: 'checkAccessCode', 
+        code: code, 
+        userAgent: userAgent 
+      })
+    });
     const data = await res.json();
     
     console.log('📡 Response:', data);

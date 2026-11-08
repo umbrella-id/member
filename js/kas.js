@@ -408,7 +408,7 @@ function renderTable(data) {
 
         bodyHtml += '<tr>';
         bodyHtml += '<td style="color:#5a6488;">' + (index++) + '</td>';
-        bodyHtml += '<td class="ign">' + (member.ign || '-') + '</td>';
+        bodyHtml += '<td class="ign">' + escapeHtml(member.ign || '-') + '</td>';
 
         for (let i = 0; i < totalMinggu; i++) {
             const status = centang[i];
@@ -639,11 +639,11 @@ function renderHistory(data) {
         const spinaFormatted = (spina >= 0 ? '+' : '') + formatSpinaRaw(spina) + ' S';
 
         html += '<tr>';
-        html += '<td class="col-date">' + dateStr + '</td>';
-        html += '<td class="col-ign">' + (item.ign || '-') + '</td>';
-        html += '<td class="col-amount ' + spinaClass + '">' + spinaFormatted + '</td>';
-        html += '<td class="col-notes">' + (item.notes || '-') + '</td>';
-        html += '<td class="col-admin">' + (item.adm || '-') + '</td>';
+        html += '<td class="col-date">' + escapeHtml(dateStr) + '</td>';
+        html += '<td class="col-ign">' + escapeHtml(item.ign || '-') + '</td>';
+        html += '<td class="col-amount ' + spinaClass + '">' + escapeHtml(spinaFormatted) + '</td>';
+        html += '<td class="col-notes">' + escapeHtml(item.notes || '-') + '</td>';
+        html += '<td class="col-admin">' + escapeHtml(item.adm || '-') + '</td>';
         html += '</tr>';
     }
 

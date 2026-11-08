@@ -477,7 +477,7 @@ function renderCrysta() {
             var paddingNeeded = Math.max(0, targetRows - bodyItems.length);
             
             gridHtml += '    <div class="crysta-card" style="min-height:' + minCardHeight + 'px;">';
-            gridHtml += '      <div class="crysta-card-header" onclick="openCrystaDetail(\'' + escapeJs(headerName) + '\')">';
+            gridHtml += '    <div class="crysta-card-header" data-crysta-name="' + escapeHtml(headerName) + '">';
             gridHtml += '        <span class="crysta-icon">' + ci(card.type, isHeaderBase, 20) + '</span>';
             gridHtml += '        <span class="crysta-name">' + escapeHtml(headerName) + '</span>';
             gridHtml += '      </div>';
@@ -487,7 +487,7 @@ function renderCrysta() {
                 var item = bodyItems[b];
                 var isItemBase = isBaseNode(item.crysta_name);
                 
-                gridHtml += '        <div class="crysta-level-item" onclick="openCrystaDetail(\'' + escapeJs(item.crysta_name) + '\')">';
+                gridHtml += '        <div class="crysta-level-item" data-crysta-name="' + escapeHtml(item.crysta_name) + '">';
                 gridHtml += '          <span class="crysta-level-icon">' + ci(item.type, isItemBase, 14) + '</span>';
                 gridHtml += '          <span class="crysta-level-name">' + escapeHtml(item.crysta_name) + '</span>';
                 gridHtml += '        </div>';
@@ -508,6 +508,12 @@ function renderCrysta() {
 
     console.log('📝 Setting gridContainer.innerHTML...');
     gridContainer.innerHTML = gridHtml;
+
+    gridContainer.querySelectorAll('[data-crysta-name]').forEach(el => {
+        el.addEventListener('click', function() {
+            openCrystaDetail(this.dataset.crystaName);
+        });
+    });
     console.log('✅ renderCrysta() COMPLETE');
 }
 

@@ -68,8 +68,8 @@ function loadCrystaData(callback) {
     }
     
     console.log('🌐 Fetching data dari API...');
-    fetch(getCrystaUrl())
-        .then(function(r) {
+    apiGas5('getCrysta', {})
+        .then(function(data) {
             console.log('📡 Response status:', r.status);
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();

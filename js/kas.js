@@ -62,20 +62,15 @@ function setHistoryCache(value) {
 
 function fetchKas(tahun, bulan) {
     const key = tahun + '-' + bulan;
-    
     if (memCache.kas[key]) return Promise.resolve(memCache.kas[key]);
     if (inFlightKas[key]) return inFlightKas[key];
     
-    const url = buildKasUrl('getMonthlyTable', { tahun, bulan });
-    inFlightKas[key] = fetch(url)
-        .then(r => {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-        })
+    // GUNAKAN POST
+    inFlightKas[key] = apiGas5('getMonthlyTable', { tahun, bulan })
         .then(data => {
             if (data.success) {
                 memCache.kas[key] = data;
-                cacheTime.kas[key] = Date.now();  // 🎯 FIX: Set timestamp!
+                cacheTime.kas[key] = Date.now();
             }
             delete inFlightKas[key];
             return data;
@@ -91,16 +86,12 @@ function fetchHistory() {
     if (memCache.history) return Promise.resolve(memCache.history);
     if (inFlightHistory) return inFlightHistory;
     
-    const url = buildKasUrl('getHistory', { limit: 100 });
-    inFlightHistory = fetch(url)
-        .then(r => {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-        })
+    // GUNAKAN POST
+    inFlightHistory = apiGas5('getHistory', { limit: 100 })
         .then(data => {
             if (data.success && data.data) {
                 memCache.history = data.data;
-                cacheTime.history = Date.now();  // 🎯 FIX: Set timestamp!
+                cacheTime.history = Date.now();
             }
             delete inFlightHistory;
             return data;

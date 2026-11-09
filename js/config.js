@@ -31,4 +31,18 @@ function buildGas5Url(action, params) {
   return url;
 }
 
+// Helper baru: POST ke GAS5 dengan Token
+async function apiGas5(action, payload = {}) {
+  const token = localStorage.getItem('umbrella_session_token') || '';
+  if (!token) throw new Error('Session token tidak ditemukan');
+  
+  const res = await fetch(UM_CONFIG.GAS5_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, token, ...payload })
+  });
+  return res.json();
+}
+window.apiGas5 = apiGas5; // Expose
+
 console.log('✅ config.js loaded (V2 — UID-based auth)');

@@ -59,14 +59,13 @@ function setHistoryCache(value) {
 
 // ==================== DEDUPLICATED FETCH ====================
 // Mencegah double-fetch saat preload & render bersamaan
-
 function fetchKas(tahun, bulan) {
     const key = tahun + '-' + bulan;
     if (memCache.kas[key]) return Promise.resolve(memCache.kas[key]);
     if (inFlightKas[key]) return inFlightKas[key];
     
-    // GUNAKAN POST
-    inFlightKas[key] = apiGas5('getMonthlyTable', { tahun, bulan })
+    // ✅ Ganti fetch(url) → fetchGas5Post(action, payload)
+    inFlightKas[key] = fetchGas5Post('getMonthlyTable', { tahun, bulan })
         .then(data => {
             if (data.success) {
                 memCache.kas[key] = data;
@@ -86,8 +85,8 @@ function fetchHistory() {
     if (memCache.history) return Promise.resolve(memCache.history);
     if (inFlightHistory) return inFlightHistory;
     
-    // GUNAKAN POST
-    inFlightHistory = apiGas5('getHistory', { limit: 100 })
+    // ✅ Ganti fetch(url) → fetchGas5Post(action, payload)
+    inFlightHistory = fetchGas5Post('getHistory', { limit: 100 })
         .then(data => {
             if (data.success && data.data) {
                 memCache.history = data.data;

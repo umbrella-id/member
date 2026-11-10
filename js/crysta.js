@@ -68,18 +68,15 @@ function loadCrystaData(callback) {
     }
     
     console.log('🌐 Fetching data dari API...');
+    
+    // ✅ fetchGas5Post() langsung return JSON — TIDAK perlu .then(r => r.json())
     fetchGas5Post('getCrysta')
-        .then(function(data) {
-            console.log('📡 Response status:', r.status);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-        })
         .then(function(data) {
             console.log('📦 Data dari server:', data);
             
-            // 🆕 Handle error Unauthorized
+            // Handle error Unauthorized
             if (data.error && data.error.indexOf('Unauthorized') !== -1) {
-                console.warn('🔒 CRYSTA: Unauthorized — UID invalid');
+                console.warn('🔒 CRYSTA: Unauthorized — token invalid');
                 if (!cached || cached.length === 0) {
                     crystaRawData = [];
                     isDataLoaded = true;

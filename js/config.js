@@ -31,18 +31,28 @@ function buildGas5Url(action, params) {
   return url;
 }
 
-// Helper baru: POST ke GAS5 dengan Token
-async function apiGas5(action, payload = {}) {
+// Helper: bangun body POST untuk GAS5
+function buildGas5PostBody(action, payload = {}) {
   const token = localStorage.getItem('umbrella_session_token') || '';
-  if (!token) throw new Error('Session token tidak ditemukan');
-  
+  return {
+    action: action,
+    token: token,
+    ...payload
+  };
+}
+
+// Helper: POST ke GAS5
+async function fetchGas5Post(action, payload = {}) {
+  const body = buildGas5PostBody(action, payload);
   const res = await fetch(UM_CONFIG.GAS5_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, token, ...payload })
+    body: JSON.stringify(body)
   });
   return res.json();
 }
-window.apiGas5 = apiGas5; // Expose
+
+window.buildGas5PostBody = buildGas5PostBody;
+window.fetchGas5Post = fetchGas5Post;
 
 console.log('✅ config.js loaded (V2 — UID-based auth)');

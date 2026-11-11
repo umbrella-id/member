@@ -57,10 +57,12 @@ async function checkGateStatus() {
   const timeoutId = setTimeout(() => controller.abort(), 10000);
   
   try {
-    const url = buildGas5Url('checkUidType', { uid: uUid });
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    
+    const token = localStorage.getItem('umbrella_session_token') || '';
+    const res = await fetch(UM_CONFIG.GAS5_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'checkUidType', token })
+    });
     const data = await res.json();
     
     if (data.error && data.error.indexOf('Unauthorized') !== -1) {

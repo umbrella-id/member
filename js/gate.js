@@ -88,7 +88,6 @@ async function checkGateStatus() {
       return false;
     }
   } catch (e) {
-      clearTimeout(timeoutId);
       console.error('❌ Gagal verifikasi (Timeout/Network):', e);
       
       // 🎯 FAIL-CLOSED: Jangan buka gate jika server tidak bisa dihubungi
@@ -141,8 +140,13 @@ async function verifyMemberBackground() {
   }
   
   try {
-    const url = buildGas5Url('checkUidType', { uid: uUid });
-    const res = await fetch(url);
+    // ✅ POST dengan token (pola sama dengan checkGateStatus)
+    const token = localStorage.getItem('umbrella_session_token') || '';
+    const res = await fetch(UM_CONFIG.GAS5_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'checkUidType', token })
+    });
     const data = await res.json();
     
     sessionStorage.setItem('u_last_verify', Date.now().toString());
@@ -152,16 +156,15 @@ async function verifyMemberBackground() {
     } else {
       console.log('🔴 Verifikasi background: tidak valid — logout');
       localStorage.removeItem('u_uid');
+      localStorage.removeItem('umbrella_session_token');   // ← tambahkan ini juga
       sessionStorage.removeItem('u_last_verify');
       await loadGateQuestion();
       showGate();
-      // Reload biar bersih
       setTimeout(() => location.reload(), 1500);
     }
   } catch(e) {
       console.warn('⚠️ Verifikasi background gagal (jaringan):', e);
       // Cukup log, jangan tendang user jika hanya masalah jaringan sesaat
-      // Gate utama tetap aman karena sudah Fail-Closed saat awal load
   }
 }
 

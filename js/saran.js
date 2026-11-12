@@ -170,17 +170,7 @@ function initSaranEvents() {
         sendBtn.disabled = true;
         sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MENGIRIM...';
 
-        fetch(UM_CONFIG.GAS5_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-                action: 'submitSaran',
-                uid: uid,
-                token: token,
-                message: pesan
-            })
-        })
-            .then(function(r) { return r.json(); })
+        window.authFetch('submitSaran', { uid, token, message: pesan })
             .then(function(data) {
                 if (data.status === 'success') {
                     showToastSaran('✅ Saran terkirim. Terima kasih.');

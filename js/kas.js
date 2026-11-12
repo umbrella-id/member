@@ -3,9 +3,6 @@
 const START_YEAR = 2025;
 const START_MONTH = 6;
 
-// Alias: buildKasUrl = buildGas5Url (dari config.js)
-const buildKasUrl = buildGas5Url;
-
 // ==================== STATE ====================
 let currentTahun = new Date().getFullYear();
 let currentBulan = new Date().getMonth() + 1;
@@ -65,7 +62,7 @@ function fetchKas(tahun, bulan) {
     if (inFlightKas[key]) return inFlightKas[key];
     
     // ✅ Ganti fetch(url) → fetchGas5Post(action, payload)
-    inFlightKas[key] = fetchGas5Post('getMonthlyTable', { tahun, bulan })
+    inFlightKas[key] = contentFetch('getKasMonthly', { tahun, bulan })
         .then(data => {
             if (data.success) {
                 memCache.kas[key] = data;
@@ -86,7 +83,7 @@ function fetchHistory() {
     if (inFlightHistory) return inFlightHistory;
     
     // ✅ Ganti fetch(url) → fetchGas5Post(action, payload)
-    inFlightHistory = fetchGas5Post('getHistory', { limit: 100 })
+    inFlightHistory = contentFetch('getKasHistory', { limit: 100 })
         .then(data => {
             if (data.success && data.data) {
                 memCache.history = data.data;

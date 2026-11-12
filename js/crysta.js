@@ -1,12 +1,3 @@
-// Helper: bangun URL GAS5 fresh (UID dari localStorage)
-function getCrystaUrl() {
-    if (typeof buildGas5Url === 'function') {
-        return buildGas5Url('getCrysta', {});
-    }
-    var uid = localStorage.getItem('u_uid') || '';
-    return 'https://script.google.com/macros/s/AKfycbzTP1-9KuQ2iz4ffTfhujqkSIQqQxXWMXY-BHljCVU_Zzm0Ept8j4AJUCBHqB-ZSZk/exec?action=getCrysta&uid=' + encodeURIComponent(uid);
-}
-
 // ==================== TIPE WARNA & LABEL ====================
 var TYPE_COLORS = {
     weapon: { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#ef4444', label: 'Weapon' },
@@ -69,8 +60,7 @@ function loadCrystaData(callback) {
     
     console.log('🌐 Fetching data dari API...');
     
-    // ✅ fetchGas5Post() langsung return JSON — TIDAK perlu .then(r => r.json())
-    fetchGas5Post('getCrysta')
+    contentFetch('getCrysta')
         .then(function(data) {
             console.log('📦 Data dari server:', data);
             

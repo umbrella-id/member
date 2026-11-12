@@ -252,7 +252,7 @@ async function submitGate() {
   try {
     const data = await window.authFetch('checkAccessCode', { 
         code: code, 
-        userAgent: userAgent 
+        userAgent: (navigator.userAgent || '').substring(0, 100)
     }, { isWrite: true });
     
     console.log('📡 Response:', data);

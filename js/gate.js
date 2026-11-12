@@ -27,7 +27,6 @@ async function checkGateStatus() {
   const CACHE_MS = 5 * 60 * 1000;
   
   if (uUid && !sessionToken) {
-    console.log('🔄 Migrasi: uid ada tanpa token, force re-gate');
     localStorage.removeItem('u_uid');
     localStorage.removeItem('u_last_verify');
     localStorage.removeItem('u_class');
@@ -35,91 +34,58 @@ async function checkGateStatus() {
   }
   
   if (uUid && sessionToken && (Date.now() - lastVerify) < CACHE_MS) {
-    console.log('⚡ Verified < 5 menit — skip fetch');
     hideGate();
     window.umbrellaGateVerified = true;
-    document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));  // 🎯 FIX
-    setTimeout(() => {
-      sessionStorage.setItem('u_last_verify', Date.now().toString());
-    }, 100);
+    document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
+    setTimeout(() => sessionStorage.setItem('u_last_verify', Date.now().toString()), 100);
     return true;
   }
   
   const questionPromise = loadGateQuestion();
   
-  if (!uUid) {
+  if (!uUid || !uUid.startsWith('M-')) {
     await questionPromise;
     showGate();
     return false;
   }
   
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  
   try {
-    const token = localStorage.getItem('umbrella_session_token') || '';
-    const res = await fetch(UM_CONFIG.GAS5_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'checkUidType', token })
-    });
-    const data = await res.json();
+    const data = await window.authFetch('validateGuestSession', { uid: uUid, token: sessionToken });
     
-    if (data.error && data.error.indexOf('Unauthorized') !== -1) {
-      localStorage.removeItem('u_uid');
-      sessionStorage.removeItem('u_last_verify');
-      await questionPromise;
-      showGate();
-      return false;
-    }
-    
-    if (data.success && data.type === 'member' && data.valid === true) {
-      console.log('✅ Tipe member valid → masuk');
+    if (data.valid && data.uid === uUid) {
       sessionStorage.setItem('u_last_verify', Date.now().toString());
       hideGate();
       window.umbrellaGateVerified = true;
-      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));  // 🎯 FIX
+      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
       return true;
-    } else {
-      localStorage.removeItem('u_uid');
-      sessionStorage.removeItem('u_last_verify');
-      await questionPromise;
-      showGate();
-      return false;
     }
-  } catch (e) {
-      console.error('❌ Gagal verifikasi (Timeout/Network):', e);
-      
-      // 🎯 FAIL-CLOSED: Jangan buka gate jika server tidak bisa dihubungi
-      await questionPromise;
-      showGate();
-      
-      // Tampilkan pesan error di layar gate
-      showGateMessage('Gagal terhubung ke server. Periksa koneksi internet Anda.', true);
-      return false;
+    
+    localStorage.removeItem('u_uid');
+    localStorage.removeItem('umbrella_session_token');
+    sessionStorage.removeItem('u_last_verify');
+    await questionPromise;
+    showGate();
+    return false;
+    
+  } catch(e) {
+    await questionPromise;
+    showGate();
+    showGateMessage('Gagal terhubung ke server. Periksa koneksi internet Anda.', true);
+    return false;
   }
 }
 
 // ==========================================
-// LOAD PERTANYAAN GATE DARI GAS 5
+// LOAD PERTANYAAN GATE
 // ==========================================
 async function loadGateQuestion() {
   try {
-    const url = `${UM_CONFIG.GAS5_URL}?action=getGateQuestion`;
-    const res = await fetch(url);
-    const data = await res.json();
-    
-    console.log('📡 Gate question response:', data);
-    
-    if (data.success && data.question) {
-      const label = document.getElementById('gateQuestion');
-      if (label) label.textContent = data.question;
-    } else {
-      const label = document.getElementById('gateQuestion');
-      if (label) label.textContent = 'Masukkan Kode Akses';
+    const data = await window.authGet('getGateQuestion');
+    const label = document.getElementById('gateQuestion');
+    if (label) {
+      label.textContent = (data.success && data.question) ? data.question : 'Masukkan Kode Akses';
     }
   } catch(e) {
-    console.error('❌ Load gate question error:', e);
     const label = document.getElementById('gateQuestion');
     if (label) label.textContent = 'Masukkan Kode Akses';
   }
@@ -130,41 +96,28 @@ async function loadGateQuestion() {
 // ==========================================
 async function verifyMemberBackground() {
   const uUid = localStorage.getItem('u_uid') || '';
-  if (!uUid) return;
+  if (!uUid || !uUid.startsWith('M-')) return;
   
-  // Throttle 5 menit
   const lastCheck = parseInt(sessionStorage.getItem('u_last_verify') || '0');
-  if (Date.now() - lastCheck < 5 * 60 * 1000) {
-    console.log('⏭️ Skip verifikasi (baru < 5 menit)');
-    return;
-  }
+  if (Date.now() - lastCheck < 5 * 60 * 1000) return;
   
   try {
-    // ✅ POST dengan token (pola sama dengan checkGateStatus)
     const token = localStorage.getItem('umbrella_session_token') || '';
-    const res = await fetch(UM_CONFIG.GAS5_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'checkUidType', token })
-    });
-    const data = await res.json();
-    
+    const data = await window.authFetch('validateGuestSession', { uid: uUid, token });
     sessionStorage.setItem('u_last_verify', Date.now().toString());
     
-    if (data.success && data.type === 'member' && data.valid === true) {
-      console.log('✅ Verifikasi background: masih valid');
+    if (data.valid && data.uid === uUid) {
+      console.log('✅ Background: masih valid');
     } else {
-      console.log('🔴 Verifikasi background: tidak valid — logout');
       localStorage.removeItem('u_uid');
-      localStorage.removeItem('umbrella_session_token');   // ← tambahkan ini juga
+      localStorage.removeItem('umbrella_session_token');
       sessionStorage.removeItem('u_last_verify');
       await loadGateQuestion();
       showGate();
       setTimeout(() => location.reload(), 1500);
     }
   } catch(e) {
-      console.warn('⚠️ Verifikasi background gagal (jaringan):', e);
-      // Cukup log, jangan tendang user jika hanya masalah jaringan sesaat
+    console.warn('⚠️ Background check gagal (jaringan):', e);
   }
 }
 
@@ -297,17 +250,10 @@ async function submitGate() {
   console.log('📡 Verifikasi kode akses:', code);
   
   try {
-    const userAgent = (navigator.userAgent || '').substring(0, 100);
-    const res = await fetch(UM_CONFIG.GAS5_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ 
-        action: 'checkAccessCode', 
+    const data = await window.authFetch('checkAccessCode', { 
         code: code, 
         userAgent: userAgent 
-      })
-    });
-    const data = await res.json();
+    }, { isWrite: true });
     
     console.log('📡 Response:', data);
     

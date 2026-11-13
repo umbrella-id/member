@@ -451,7 +451,7 @@ function renderCrysta() {
         console.log('📭 cards empty');
         gridHtml += '    <div class="crysta-empty">';
         gridHtml += '      <i class="fas fa-box-open"></i>';
-        gridHtml += '      <p>' + (searchKeyword ? 'Tidak ada hasil untuk "' + searchKeyword + '"' : 'Tidak ada crysta yang cocok') + '</p>';
+        gridHtml += '      <p>' + (searchKeyword ? 'Tidak ada hasil untuk "' + escapeHtml(searchKeyword) + '"' : 'Tidak ada crysta yang cocok') + '</p>';
         gridHtml += '    </div>';
     } else {
         console.log('🏗️ Building ' + cards.length + ' cards...');

@@ -374,7 +374,7 @@ function renderCrysta() {
         
         html += '  <div class="crysta-controls">';
         html += '    <div class="crysta-search">';
-        html += '      <input type="text" id="crystaSearchInput" placeholder="🔎 Cari..." value="' + (searchKeyword || '') + '" />';
+        html += '      <input type="text" id="crystaSearchInput" placeholder="🔎 Cari..." value="' + escapeHtml(searchKeyword || '') + '" />';
         html += '    </div>';
         html += '    <div class="crysta-filter-dropdown">';
         html += '      <select id="crystaFilterSelect">';

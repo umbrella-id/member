@@ -24,7 +24,11 @@ async function getAuthConfig() {
     return _authConfigCache;
   }
   try {
-    const res = await fetchWithTimeout(GAS_CONTENT_URL + '?action=getAuthConfig', {}, 5000);
+    const res = await fetchWithTimeout(GAS_CONTENT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getAuthConfig' })
+    }, 5000);
     const data = await res.json();
     if (data.status === 'success' && data.activeUrl) {
       _authConfigCache = { activeUrl: data.activeUrl, active: data.active, total: data.total };

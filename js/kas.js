@@ -440,10 +440,10 @@ function updateHeader(data) {
     if (data.bendahara && data.bendahara.length > 0 && bendaharaList) {
         let html = '';
         for (const b of data.bendahara) {
-            html += '<span>' + b.nama + ': <span class="saldo">' + formatSpina(b.saldo) + '</span></span>';
+          html += '<span>' + escapeHtml(b.nama) + ': <span class="saldo">' + formatSpina(b.saldo) + '</span></span>';
         }
         bendaharaList.innerHTML = html;
-    } else if (bendaharaList) {
+    }} else if (bendaharaList) {
         bendaharaList.innerHTML = '<span>-</span>';
     }
 }

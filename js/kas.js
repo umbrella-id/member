@@ -443,7 +443,7 @@ function updateHeader(data) {
           html += '<span>' + escapeHtml(b.nama) + ': <span class="saldo">' + formatSpina(b.saldo) + '</span></span>';
         }
         bendaharaList.innerHTML = html;
-    }} else if (bendaharaList) {
+    } else if (bendaharaList) {
         bendaharaList.innerHTML = '<span>-</span>';
     }
 }

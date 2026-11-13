@@ -28,9 +28,8 @@ async function checkGateStatus() {
   
   if (uUid && !sessionToken) {
     localStorage.removeItem('u_uid');
-    localStorage.removeItem('u_last_verify');
     localStorage.removeItem('u_class');
-    sessionStorage.removeItem('u_last_verify');
+    sessionStorage.removeItem('u_last_verify');  // ← ini yang benar
   }
   
   if (uUid && sessionToken && (Date.now() - lastVerify) < CACHE_MS) {

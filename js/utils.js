@@ -27,6 +27,21 @@
       .replace(/\n/g, '\\n')
       .replace(/\r/g, '\\r');
   }
+
+  window.getFriendlyErrorMessage = function(err, fallback) {
+    if (!err) return fallback || 'Terjadi kesalahan';
+    const msg = String(err.message || '');
+    
+    if (msg.includes('Server sedang sibuk') || msg.includes('Gagal resolve auth URL')) {
+      return '⚠️ Server sedang sibuk. Coba lagi sebentar lagi.';
+    }
+    if (msg.includes('Timeout') || msg.includes('Failed to fetch') || 
+        msg.includes('NetworkError') || msg.includes('Load failed')) {
+      return '⚠️ Koneksi lambat. Periksa internet Anda.';
+    }
+    return fallback || 'Terjadi kesalahan';
+  };
+  
   window.escapeHtml = escapeHtml;
   window.escapeJs = escapeJs;
 

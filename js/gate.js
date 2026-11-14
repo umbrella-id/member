@@ -293,9 +293,8 @@ async function submitGate() {
     }
     
   } catch (e) {
-    // Network error — TIDAK dihitung sebagai gagal (bukan upaya brute force)
     console.error('❌ Error submit gate:', e);
-    showGateMessage('Koneksi gagal. Coba lagi.', true);
+    showGateMessage(getFriendlyErrorMessage(e, 'Koneksi gagal. Coba lagi.'), true);
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-shield-alt"></i> VERIFIKASI';
   }

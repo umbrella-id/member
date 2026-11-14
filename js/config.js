@@ -18,11 +18,22 @@ function fetchWithTimeout(url, options, timeoutMs) {
 }
 
 // === AUTH CONFIG ===
+let _authConfigNegativeUntil = 0;
+
 async function getAuthConfig() {
   const now = Date.now();
+  
+  // Cache positif
   if (_authConfigCache && (now - _authConfigCacheTime) < AUTH_CONFIG_TTL) {
     return _authConfigCache;
   }
+  
+  // Negative cache — jangan spam server
+  if (now < _authConfigNegativeUntil) {
+    throw new Error('Server sedang sibuk. Coba lagi dalam ' + 
+                    Math.ceil((_authConfigNegativeUntil - now) / 1000) + ' detik.');
+  }
+  
   try {
     const res = await fetchWithTimeout(GAS_CONTENT_URL, {
       method: 'POST',
@@ -30,15 +41,20 @@ async function getAuthConfig() {
       body: JSON.stringify({ action: 'getAuthConfig' })
     }, 5000);
     const data = await res.json();
+    
     if (data.status === 'success' && data.activeUrl) {
-      _authConfigCache = { activeUrl: data.activeUrl, active: data.active, total: data.total };
+      _authConfigCache = {...};
       _authConfigCacheTime = now;
+      _authConfigNegativeUntil = 0;  // reset
       return _authConfigCache;
     }
   } catch(e) {
-    console.warn('getAuthConfig fallback:', e.message);
+    console.warn('getAuthConfig error:', e.message);
   }
-  return { activeUrl: AUTH_FALLBACK, active: -1, total: 0 };
+  
+  // Gagal — set cooldown 30 detik
+  _authConfigNegativeUntil = now + 30000;
+  throw new Error('Server sedang sibuk. Coba lagi dalam 30 detik.');
 }
 
 async function reportAuthIssue(failedUrl) {

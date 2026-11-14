@@ -194,11 +194,11 @@ function initSaranEvents() {
                 }
             })
             .catch(function(e) {
-                showToastSaran('🚨 Koneksi gagal! Coba lagi.', true);
-                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
-                sendBtn.disabled = false;
-                isSendingSaran = false;
-                console.error(e);
+              showToastSaran(getFriendlyErrorMessage(e, '🚨 Koneksi gagal! Coba lagi.'), true);
+              sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
+              sendBtn.disabled = false;
+              isSendingSaran = false;
+              console.error(e);
             });
     }
 

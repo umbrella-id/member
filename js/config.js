@@ -42,7 +42,7 @@ async function getAuthConfig() {
     const data = await res.json();
     
     if (data.status === 'success' && data.activeUrl) {
-      _authConfigCache = {...};
+      _authConfigCache = { activeUrl: data.activeUrl, active: data.active, total: data.total };
       _authConfigCacheTime = now;
       _authConfigNegativeUntil = 0;  // reset
       return _authConfigCache;

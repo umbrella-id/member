@@ -7,6 +7,7 @@ const GAS_CONTENT_URL = 'https://script.google.com/macros/s/AKfycbzlxIQc75KaCjn_
 
 let _authConfigCache = null, _authConfigCacheTime = 0;
 const AUTH_CONFIG_TTL = 5 * 60 * 1000;
+let _authConfigNegativeUntil = 0;
 
 // === FETCH WITH TIMEOUT ===
 function fetchWithTimeout(url, options, timeoutMs) {
@@ -16,18 +17,14 @@ function fetchWithTimeout(url, options, timeoutMs) {
     .finally(() => clearTimeout(t));
 }
 
-// === AUTH CONFIG ===
-let _authConfigNegativeUntil = 0;
-
 async function getAuthConfig() {
   const now = Date.now();
   
-  // Cache positif
   if (_authConfigCache && (now - _authConfigCacheTime) < AUTH_CONFIG_TTL) {
     return _authConfigCache;
   }
   
-  // Negative cache — jangan spam server
+  // NEW: negative cache — jangan spam server yang sudah down
   if (now < _authConfigNegativeUntil) {
     throw new Error('Server sedang sibuk. Coba lagi dalam ' + 
                     Math.ceil((_authConfigNegativeUntil - now) / 1000) + ' detik.');
@@ -40,11 +37,10 @@ async function getAuthConfig() {
       body: JSON.stringify({ action: 'getAuthConfig' })
     }, 5000);
     const data = await res.json();
-    
     if (data.status === 'success' && data.activeUrl) {
       _authConfigCache = { activeUrl: data.activeUrl, active: data.active, total: data.total };
       _authConfigCacheTime = now;
-      _authConfigNegativeUntil = 0;  // reset
+      _authConfigNegativeUntil = 0;
       return _authConfigCache;
     }
   } catch(e) {
@@ -53,7 +49,7 @@ async function getAuthConfig() {
   
   // Gagal — set cooldown 30 detik
   _authConfigNegativeUntil = now + 30000;
-  throw new Error('Server sedang sibuk. Coba lagi dalam 30 detik.');
+  throw new Error('Gagal resolve auth URL. Server sedang sibuk.');
 }
 
 function simpleHash(str) {

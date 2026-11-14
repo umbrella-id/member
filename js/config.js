@@ -56,6 +56,15 @@ async function getAuthConfig() {
   throw new Error('Server sedang sibuk. Coba lagi dalam 30 detik.');
 }
 
+function simpleHash(str) {
+  if (!str) return 'anon';
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return 'h' + Math.abs(h).toString(36);
+}
+
 async function reportAuthIssue(failedUrl) {
   try {
     const res = await fetchWithTimeout(GAS_CONTENT_URL, {
@@ -63,7 +72,7 @@ async function reportAuthIssue(failedUrl) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'reportAuthIssue',
-        uid: localStorage.getItem('u_uid') || '',
+        uid: simpleHash(localStorage.getItem('u_uid') || ''),
         failedUrl: failedUrl
       })
     }, 5000);

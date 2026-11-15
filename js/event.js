@@ -107,12 +107,14 @@ function loadEventPage() {
                         document.body.appendChild(newScript);
                     }
                 } else {
-                    // Script inline
-                    try {
-                        eval(script.textContent);
-                    } catch(e) {
+                      // Script inline
+                      try {
+                        const newScript = document.createElement('script');
+                        newScript.textContent = script.textContent;
+                        document.body.appendChild(newScript);
+                      } catch(e) {
                         console.warn('Inline script error:', e);
-                    }
+                      }
                 }
             });
             

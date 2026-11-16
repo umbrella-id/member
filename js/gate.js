@@ -26,65 +26,29 @@ async function checkGateStatus() {
   const lastVerify = parseInt(sessionStorage.getItem('u_last_verify') || '0');
   const CACHE_MS = 5 * 60 * 1000;
   
-  // 🎯 LOADING STATE: hide semua (gate & konten tidak tampil)
+  // 🎯 Layar blank — baik gate maupun konten tidak tampil
+  const gateEl = document.getElementById('internalGate');
   const mainContent = document.getElementById('mainContent');
   const menuFloat = document.querySelector('.menu-float');
-  const gateEl = document.getElementById('internalGate');
+  if (gateEl) { gateEl.classList.remove('open'); gateEl.style.display = 'none'; }
   if (mainContent) mainContent.style.display = 'none';
   if (menuFloat) menuFloat.style.display = 'none';
-  if (gateEl) gateEl.classList.remove('open');   // gate tidak tampil
   
+  // Bersihkan state rusak
   if (uUid && !sessionToken) {
     localStorage.removeItem('u_uid');
     localStorage.removeItem('u_class');
     sessionStorage.removeItem('u_last_verify');
   }
   
-  // ==========================================
-  // FASE 1 — PARALEL (tidak butuh authConfig)
-  // ==========================================
-  const authConfigPromise = (typeof getAuthConfig === 'function')
-    ? getAuthConfig().catch(() => null)
-    : Promise.resolve(null);
-  
-  const eventPromise = (typeof checkEventAvailability === 'function')
-    ? checkEventAvailability()
-    : Promise.resolve();
-  
-  const preloadPromise = Promise.allSettled([
-    (typeof window.preloadAllData === 'function') ? window.preloadAllData() : Promise.resolve(),
-    (typeof window.preloadCrystaSilent === 'function') ? window.preloadCrystaSilent() : Promise.resolve()
-  ]);
+  const hasToken = !!(uUid && uUid.startsWith('M-') && sessionToken);
+  const fastPath = hasToken && (Date.now() - lastVerify) < CACHE_MS;
   
   // ==========================================
-  // FAST PATH: verify < 5 menit → langsung tampil
+  // FIRE PARALEL — t=0
   // ==========================================
-  if (uUid && sessionToken && (Date.now() - lastVerify) < CACHE_MS) {
-    hideGate();
-    window.umbrellaGateVerified = true;
-    document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
-    sessionStorage.setItem('u_last_verify', Date.now().toString());
-    Promise.allSettled([eventPromise, preloadPromise]).then(() => {
-      if (typeof buildMenu === 'function') {
-        const mp = document.querySelector('.menu-panel ul');
-        if (!mp || mp.children.length === 0) buildMenu();
-      }
-    });
-    return true;
-  }
-  
-  // ==========================================
-  // PATH NORMAL — tunggu authConfig dulu
-  // ==========================================
-  await authConfigPromise;
-  
-  // FASE 2 — PARALEL ke GAS-Auth (authFetch/authGet pakai cache authConfig)
-  const validatePromise = (uUid && uUid.startsWith('M-') && sessionToken)
-    ? window.authFetch('validateGuestSession', { uid: uUid, token: sessionToken }).catch(() => null)
-    : Promise.resolve(null);
-  
-  const questionPromise = (typeof window.authGet === 'function')
-    ? window.authGet('getGateQuestion')
+  const questionPromise = (typeof window.API !== 'undefined' && window.API.getGateQuestion)
+    ? window.API.getGateQuestion()
         .then(d => {
           const label = document.getElementById('gateQuestion');
           if (label) label.textContent = (d.success && d.question) ? d.question : 'Masukkan Kode Akses';
@@ -97,19 +61,28 @@ async function checkGateStatus() {
         })
     : Promise.resolve(null);
   
-  // Tunggu validate — gatekeeper
-  const validateResult = await validatePromise;
+  const authConfigPromise = (typeof getAuthConfig === 'function')
+    ? getAuthConfig().catch(() => null)
+    : Promise.resolve(null);
+  
+  const eventPromise = (typeof checkEventAvailability === 'function')
+    ? checkEventAvailability()
+    : Promise.resolve();
+  
+  // Preload berurutan: kas+history → crysta
+  const preloadPromise = (async () => {
+    try { if (window.preloadAllData) await window.preloadAllData(); } catch(e) {}
+    try { if (window.preloadCrystaSilent) await window.preloadCrystaSilent(); } catch(e) {}
+  })();
   
   // ==========================================
-  // HASIL: validasi menentukan apa yang tampil
+  // FAST PATH — verify < 5 menit → tampil instan
   // ==========================================
-  if (validateResult && validateResult.valid && validateResult.uid === uUid) {
-    // ✅ VALID → hideGate (gate TIDAK pernah tampil) → konten siap
+  if (fastPath) {
     sessionStorage.setItem('u_last_verify', Date.now().toString());
     hideGate();
     window.umbrellaGateVerified = true;
     document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
-    
     Promise.allSettled([questionPromise, eventPromise, preloadPromise]).then(() => {
       if (typeof buildMenu === 'function') {
         const mp = document.querySelector('.menu-panel ul');
@@ -119,16 +92,61 @@ async function checkGateStatus() {
     return true;
   }
   
-  // ❌ FAIL / FRESH → tunggu question siap (paralel tadi) → show gate
-  await Promise.allSettled([questionPromise, eventPromise]);
-  
-  if (uUid) {
-    localStorage.removeItem('u_uid');
-    localStorage.removeItem('umbrella_session_token');
-    sessionStorage.removeItem('u_last_verify');
+  // ==========================================
+  // OPSI 2a — TANPA TOKEN: gate langsung tampil
+  // ==========================================
+  if (!hasToken) {
+    // Tunggu hanya question (fast — GAS-Content hardcoded)
+    await questionPromise;
+    showGate();
+    
+    // Background: event + preload (tidak blocking gate)
+    Promise.allSettled([eventPromise, preloadPromise, authConfigPromise]).then(() => {
+      if (typeof buildMenu === 'function') {
+        const mp = document.querySelector('.menu-panel ul');
+        if (!mp || mp.children.length === 0) buildMenu();
+      }
+    });
+    return false;
   }
   
+  // ==========================================
+  // OPSI 2b — ADA TOKEN: validasi dulu
+  // ==========================================
+  const config = await authConfigPromise;
+  
+  if (!config) {
+    // Gagal resolve authConfig → fallback: gate (question kemungkinan sudah ready)
+    await questionPromise;
+    showGate();
+    return false;
+  }
+  
+  // Validasi (authFetch pakai cache authConfig)
+  const validateResult = await window.authFetch('validateGuestSession', { uid: uUid, token: sessionToken })
+    .catch(() => null);
+  
+  if (validateResult && validateResult.valid && validateResult.uid === uUid) {
+    // ✅ VALID → konten langsung tampil (gate tidak pernah muncul)
+    sessionStorage.setItem('u_last_verify', Date.now().toString());
+    hideGate();
+    window.umbrellaGateVerified = true;
+    document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
+    Promise.allSettled([questionPromise, eventPromise, preloadPromise]).then(() => {
+      if (typeof buildMenu === 'function') {
+        const mp = document.querySelector('.menu-panel ul');
+        if (!mp || mp.children.length === 0) buildMenu();
+      }
+    });
+    return true;
+  }
+  
+  // ❌ INVALID → gate tampil (question sudah ready dari paralel tadi)
+  await questionPromise;
   showGate();
+  localStorage.removeItem('u_uid');
+  localStorage.removeItem('umbrella_session_token');
+  sessionStorage.removeItem('u_last_verify');
   return false;
 }
 

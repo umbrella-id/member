@@ -178,6 +178,9 @@ async function contentFetch(action, params) {
 
 // === CONTENT API (internal-specific) ===
 const API = {
+  async getGateQuestion() {
+    return contentFetch('getGateQuestion');
+  },
   async getKasMonthly(tahun, bulan) {
     return contentFetch('getKasMonthly', { tahun, bulan });
   },

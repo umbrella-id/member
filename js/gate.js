@@ -26,52 +26,105 @@ async function checkGateStatus() {
   const lastVerify = parseInt(sessionStorage.getItem('u_last_verify') || '0');
   const CACHE_MS = 5 * 60 * 1000;
   
+  // 🎯 Gate tampil instan — user tidak lihat layar kosong
+  showGate();
+  
   if (uUid && !sessionToken) {
     localStorage.removeItem('u_uid');
     localStorage.removeItem('u_class');
-    sessionStorage.removeItem('u_last_verify');  // ← ini yang benar
+    sessionStorage.removeItem('u_last_verify');
   }
   
+  // ==========================================
+  // FASE 1 — FIRE PARALEL (3 GAS + HEAD)
+  // ==========================================
+  const authConfigPromise = (typeof getAuthConfig === 'function')
+    ? getAuthConfig().catch(() => null)
+    : Promise.resolve(null);
+  
+  const eventPromise = (typeof checkEventAvailability === 'function')
+    ? checkEventAvailability()
+    : Promise.resolve();
+  
+  // 🎯 Preload konten — tidak butuh authConfig (GAS-Content hardcoded)
+  const preloadPromise = Promise.allSettled([
+    (typeof window.preloadAllData === 'function') ? window.preloadAllData() : Promise.resolve(),
+    (typeof window.preloadCrystaSilent === 'function') ? window.preloadCrystaSilent() : Promise.resolve()
+  ]);
+  
+  // ==========================================
+  // FAST PATH: verify < 5 menit → hide instan
+  // ==========================================
   if (uUid && sessionToken && (Date.now() - lastVerify) < CACHE_MS) {
     hideGate();
     window.umbrellaGateVerified = true;
     document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
-    setTimeout(() => sessionStorage.setItem('u_last_verify', Date.now().toString()), 100);
+    sessionStorage.setItem('u_last_verify', Date.now().toString());
+    
+    Promise.allSettled([eventPromise, preloadPromise]).then(() => {
+      if (typeof buildMenu === 'function') {
+        const menuPanel = document.querySelector('.menu-panel ul');
+        if (!menuPanel || menuPanel.children.length === 0) buildMenu();
+      }
+    });
     return true;
   }
   
-  const questionPromise = loadGateQuestion();
+  // ==========================================
+  // PATH NORMAL — tunggu authConfig
+  // ==========================================
+  await authConfigPromise;
   
-  if (!uUid || !uUid.startsWith('M-')) {
-    await questionPromise;
-    showGate();
-    return false;
+  // 🎯 FIRE PARALEL: validate + question (ke GAS-Auth)
+  // authFetch/authGet otomatis pakai authConfig yang sudah di-cache
+  const validatePromise = (uUid && uUid.startsWith('M-') && sessionToken)
+    ? window.authFetch('validateGuestSession', { uid: uUid, token: sessionToken })
+        .catch(() => null)
+    : Promise.resolve(null);
+  
+  const questionPromise = (typeof window.authGet === 'function')
+    ? window.authGet('getGateQuestion')
+        .then(d => {
+          const label = document.getElementById('gateQuestion');
+          if (label) label.textContent = (d.success && d.question) ? d.question : 'Masukkan Kode Akses';
+          return d;
+        })
+        .catch(() => {
+          const label = document.getElementById('gateQuestion');
+          if (label) label.textContent = 'Masukkan Kode Akses';
+          return null;
+        })
+    : Promise.resolve(null);
+  
+  // Tunggu validate — gatekeeper utama
+  const validateResult = await validatePromise;
+  
+  if (validateResult && validateResult.valid && validateResult.uid === uUid) {
+    sessionStorage.setItem('u_last_verify', Date.now().toString());
+    hideGate();
+    window.umbrellaGateVerified = true;
+    document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
+    
+    // Question + event + preload selesaikan di background
+    Promise.allSettled([questionPromise, eventPromise, preloadPromise]).then(() => {
+      if (typeof buildMenu === 'function') {
+        const menuPanel = document.querySelector('.menu-panel ul');
+        if (!menuPanel || menuPanel.children.length === 0) buildMenu();
+      }
+    });
+    
+    return true;
   }
   
-  try {
-    const data = await window.authFetch('validateGuestSession', { uid: uUid, token: sessionToken });
-    
-    if (data.valid && data.uid === uUid) {
-      sessionStorage.setItem('u_last_verify', Date.now().toString());
-      hideGate();
-      window.umbrellaGateVerified = true;
-      document.dispatchEvent(new CustomEvent('umbrella-gate-verified'));
-      return true;
-    }
-    
+  // GAGAL — gate tetap, tunggu question siap untuk tampil
+  await Promise.allSettled([questionPromise, eventPromise]);
+  
+  if (uUid) {
     localStorage.removeItem('u_uid');
     localStorage.removeItem('umbrella_session_token');
     sessionStorage.removeItem('u_last_verify');
-    await questionPromise;
-    showGate();
-    return false;
-    
-  } catch(e) {
-    await questionPromise;
-    showGate();
-    showGateMessage('Gagal terhubung ke server. Periksa koneksi internet Anda.', true);
-    return false;
   }
+  return false;
 }
 
 // ==========================================

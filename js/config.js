@@ -17,6 +17,8 @@ function fetchWithTimeout(url, options, timeoutMs) {
     .finally(() => clearTimeout(t));
 }
 
+let _authConfigPromise = null;
+
 async function getAuthConfig() {
   const now = Date.now();
   
@@ -24,32 +26,40 @@ async function getAuthConfig() {
     return _authConfigCache;
   }
   
-  // NEW: negative cache — jangan spam server yang sudah down
+  // 🎯 Dedup: kalau ada in-flight, tunggu yang sama
+  if (_authConfigPromise) return _authConfigPromise;
+  
   if (now < _authConfigNegativeUntil) {
     throw new Error('Server sedang sibuk. Coba lagi dalam ' + 
                     Math.ceil((_authConfigNegativeUntil - now) / 1000) + ' detik.');
   }
   
-  try {
-    const res = await fetchWithTimeout(GAS_CONTENT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getAuthConfig' })
-    }, 5000);
-    const data = await res.json();
-    if (data.status === 'success' && data.activeUrl) {
-      _authConfigCache = { activeUrl: data.activeUrl, active: data.active, total: data.total };
-      _authConfigCacheTime = now;
-      _authConfigNegativeUntil = 0;
-      return _authConfigCache;
+  _authConfigPromise = (async () => {
+    try {
+      const res = await fetchWithTimeout(GAS_CONTENT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'getAuthConfig' })
+      }, 5000);
+      const data = await res.json();
+      if (data.status === 'success' && data.activeUrl) {
+        _authConfigCache = { activeUrl: data.activeUrl, active: data.active, total: data.total };
+        _authConfigCacheTime = Date.now();
+        _authConfigNegativeUntil = 0;
+        return _authConfigCache;
+      }
+    } catch(e) {
+      console.warn('getAuthConfig error:', e.message);
     }
-  } catch(e) {
-    console.warn('getAuthConfig error:', e.message);
-  }
+    _authConfigNegativeUntil = Date.now() + 30000;
+    throw new Error('Gagal resolve auth URL.');
+  })();
   
-  // Gagal — set cooldown 30 detik
-  _authConfigNegativeUntil = now + 30000;
-  throw new Error('Gagal resolve auth URL. Server sedang sibuk.');
+  try {
+    return await _authConfigPromise;
+  } finally {
+    _authConfigPromise = null;
+  }
 }
 
 function simpleHash(str) {

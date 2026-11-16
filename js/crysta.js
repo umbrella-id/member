@@ -620,6 +620,22 @@ function closeCrystaDetail() {
     if (overlay) overlay.remove();
 }
 
+function preloadCrystaSilent() {
+  var cached = getCrystaCache();
+  if (cached && cached.length > 0) return Promise.resolve();
+  
+  return contentFetch('getCrysta')
+    .then(function(data) {
+      if (data.success && data.data && data.data.length > 0) {
+        crystaRawData = data.data;
+        setCrystaCache(crystaRawData);
+        isDataLoaded = true;
+      }
+    })
+    .catch(function(err) { console.warn('Crysta silent preload:', err); });
+}
+window.preloadCrystaSilent = preloadCrystaSilent;
+
 // ==================== TOAST ====================
 function showToastCrysta(msg, isError) {
     var toast = document.getElementById('toastMessage');

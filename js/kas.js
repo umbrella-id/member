@@ -1000,18 +1000,3 @@ window.renderHistory = renderHistory;
 window.allHistoryData = allHistoryData;
 window.currentTahun = currentTahun;
 window.currentBulan = currentBulan;
-
-// ==================== INIT: PRELOAD SAAT GATE VERIFIED ====================
-document.addEventListener('DOMContentLoaded', function() {
-    function tryPreload() {
-        console.log('🎯 [PRELOAD] Listener triggered');
-        setTimeout(preloadAllData, 100);
-    }
-    
-    if (window.umbrellaGateVerified) {
-        console.log('🎯 [PRELOAD] Gate sudah verified sebelum listener — preload langsung');
-        tryPreload();
-    } else {
-        document.addEventListener('umbrella-gate-verified', tryPreload, { once: true });
-    }
-});

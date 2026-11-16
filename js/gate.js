@@ -27,12 +27,14 @@ async function checkGateStatus() {
   const CACHE_MS = 5 * 60 * 1000;
   
   // 🎯 Layar blank — baik gate maupun konten tidak tampil
-  const gateEl = document.getElementById('internalGate');
-  const mainContent = document.getElementById('mainContent');
-  const menuFloat = document.querySelector('.menu-float');
-  if (gateEl) { gateEl.classList.remove('open'); gateEl.style.display = 'none'; }
-  if (mainContent) mainContent.style.display = 'none';
-  if (menuFloat) menuFloat.style.display = 'none';
+const gateEl = document.getElementById('internalGate');
+const mainContent = document.getElementById('mainContent');
+const menuFloat = document.querySelector('.menu-float');
+// 🎯 Hanya remove class open — CSS default #internalGate { display: none }
+// JANGAN set inline display: none (bikin showGate() tidak bisa override)
+if (gateEl) gateEl.classList.remove('open');
+if (mainContent) mainContent.style.display = 'none';
+if (menuFloat) menuFloat.style.display = 'none';
   
   // Bersihkan state rusak
   if (uUid && !sessionToken) {
@@ -216,7 +218,10 @@ function showGate() {
   const mainContent = document.getElementById('mainContent');
   const menuFloat = document.querySelector('.menu-float');
   
-  if (gate) gate.classList.add('open');
+  if (gate) {
+    gate.style.display = '';          // ← RESET inline (kunci fix)
+    gate.classList.add('open');       // CSS .open { display: flex } aktif
+  }
   if (mainContent) mainContent.style.display = 'none';
   if (menuFloat) menuFloat.style.display = 'none';
 }
